@@ -12,12 +12,12 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0fs"></ZoomStartTime>
-      <ZoomEndTime time="6580000001fs"></ZoomEndTime>
-      <Cursor1Time time="9400000000fs"></Cursor1Time>
+      <ZoomEndTime time="14213336344fs"></ZoomEndTime>
+      <Cursor1Time time="46710000000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="195"></NameColumnWidth>
-      <ValueColumnWidth column_width="122"></ValueColumnWidth>
+      <ValueColumnWidth column_width="106"></ValueColumnWidth>
    </column_width_setting>
    <WVObjectSize size="29" />
    <wvobject fp_name="/Nexys4DisplayTestBench/rst_pbn" type="logic">
@@ -77,8 +77,8 @@
          <obj_property name="Radix">HEXRADIX</obj_property>
       </wvobject>
       <wvobject fp_name="/Nexys4DisplayTestBench/dut/digit_o" type="array">
-         <obj_property name="ElementShortName">digit_o[15:0]</obj_property>
-         <obj_property name="ObjectShortName">digit_o[15:0]</obj_property>
+         <obj_property name="ElementShortName">digit_o[7:0]</obj_property>
+         <obj_property name="ObjectShortName">digit_o[7:0]</obj_property>
          <obj_property name="Radix">HEXRADIX</obj_property>
       </wvobject>
    </wvobject>
@@ -96,7 +96,6 @@
       <obj_property name="ElementShortName">spi_rx_u_byte_r[7:0]</obj_property>
       <obj_property name="ObjectShortName">spi_rx_u_byte_r[7:0]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="isExpanded"></obj_property>
    </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_l_byte_r" type="array">
       <obj_property name="ElementShortName">spi_rx_l_byte_r[7:0]</obj_property>
@@ -108,6 +107,11 @@
       <obj_property name="ObjectShortName">spi_rx_bit_count_r[4:0]</obj_property>
       <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
+   <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_bit_count_next_r" type="array">
+      <obj_property name="ElementShortName">spi_rx_bit_count_next_r[4:0]</obj_property>
+      <obj_property name="ObjectShortName">spi_rx_bit_count_next_r[4:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_transfer_complete_r" type="logic">
       <obj_property name="ElementShortName">spi_rx_transfer_complete_r</obj_property>
       <obj_property name="ObjectShortName">spi_rx_transfer_complete_r</obj_property>
@@ -115,12 +119,6 @@
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_transfer_complete_next_c" type="logic">
       <obj_property name="ElementShortName">spi_rx_transfer_complete_next_c</obj_property>
       <obj_property name="ObjectShortName">spi_rx_transfer_complete_next_c</obj_property>
-   </wvobject>
-   <wvobject fp_name="/Nexys4DisplayTestBench/dut/rxi_command_c" type="array">
-      <obj_property name="ElementShortName">rxi_command_c[3:0]</obj_property>
-      <obj_property name="ObjectShortName">rxi_command_c[3:0]</obj_property>
-      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
-      <obj_property name="isExpanded"></obj_property>
    </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/rx_address_r" type="array">
       <obj_property name="ElementShortName">rx_address_r[3:0]</obj_property>
@@ -144,13 +142,14 @@
       <obj_property name="ElementShortName">display_value_c[31:0]</obj_property>
       <obj_property name="ObjectShortName">display_value_c[31:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/Nexys4DisplayTestBench/dut/enable_c" type="logic">
-      <obj_property name="ElementShortName">enable_c</obj_property>
-      <obj_property name="ObjectShortName">enable_c</obj_property>
+   <wvobject fp_name="/Nexys4DisplayTestBench/dut/display_radix_c" type="array">
+      <obj_property name="ElementShortName">display_radix_c[7:0]</obj_property>
+      <obj_property name="ObjectShortName">display_radix_c[7:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/Nexys4DisplayTestBench/dut/error_hex_x" type="logic">
-      <obj_property name="ElementShortName">error_hex_x</obj_property>
-      <obj_property name="ObjectShortName">error_hex_x</obj_property>
+   <wvobject fp_name="/Nexys4DisplayTestBench/dut/display_enable_c" type="array">
+      <obj_property name="ElementShortName">display_enable_c[7:0]</obj_property>
+      <obj_property name="ObjectShortName">display_enable_c[7:0]</obj_property>
+      <obj_property name="Radix">BINARYRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/BYTE_WIDTH" type="array">
       <obj_property name="ElementShortName">BYTE_WIDTH[31:0]</obj_property>

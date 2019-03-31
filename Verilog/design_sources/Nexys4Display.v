@@ -11,7 +11,7 @@ module Nexys4Display (
     input   spi_mosi_i, //idle high
     output  spi_miso_o, //idle high
     output  [7:0]  segment_o, 
-    output  [15:0] digit_o
+    output  [7:0] digit_o
     );
     
     /*************************************************************************/
@@ -43,7 +43,7 @@ module Nexys4Display (
     wire [31:0]           display_value_c;
     wire [BYTE_WIDTH-1:0] display_radix_c;
     
-    wire                  display_enable_c;
+    wire [BYTE_WIDTH-1:0] display_enable_c;
     
     /*************************************************************************/
     /* SPI Receiver                                                          */
@@ -59,17 +59,16 @@ module Nexys4Display (
     assign spi_rx_shiftreg_next_c = {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i};
     
     //count the number of bits received
-    always @ (posedge spi_sclk_i or negedge rst_low_i)
+    always @ (posedge spi_sclk_i or negedge rst_low_i or posedge spi_rx_transfer_complete_r)
     begin
-        if (~rst_low_i) spi_rx_bit_count_r <= 5'd0;
+        if (~rst_low_i | spi_rx_transfer_complete_r) spi_rx_bit_count_r <= 5'd0;
         else             spi_rx_bit_count_r <= spi_rx_bit_count_next_r;
     end
     
     always @ (spi_ss_i, spi_rx_transfer_complete_r, spi_rx_bit_count_r)
     begin
-        if (spi_rx_transfer_complete_r) spi_rx_bit_count_next_r = 5'd0;
-        else if (~spi_ss_i)             spi_rx_bit_count_next_r = spi_rx_bit_count_r + 1'b1;
-        else                            spi_rx_bit_count_next_r = spi_rx_bit_count_r;
+        if (~spi_ss_i)             spi_rx_bit_count_next_r = spi_rx_bit_count_r + 1'b1;
+        else                       spi_rx_bit_count_next_r = spi_rx_bit_count_r;
     end
     
     //is a transfer completed? if so set complete flag -> 16 bit transfers, 2^4 = 16 for bit select
@@ -111,10 +110,10 @@ module Nexys4Display (
     /* Message Decoding                                                      */
     /*************************************************************************/
     
-    assign rxi_command_c = spi_rx_u_byte_r[7:4];
-    always @ (rxi_command_c,spi_rx_u_byte_r,spi_rx_l_byte_r)
+    assign rx_command_c = spi_rx_u_byte_r[7:4];
+    always @ (rx_command_c,spi_rx_u_byte_r,spi_rx_l_byte_r)
     begin
-        case(rxi_command_c)
+        case(rx_command_c)
             4'b0001: //write to register
             begin
                 rx_address_r = spi_rx_u_byte_r[3:0];
