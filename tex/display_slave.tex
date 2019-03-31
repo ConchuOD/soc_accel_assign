@@ -1,0 +1,70 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[margin=2.5cm]{geometry}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{cancel}
+%\usepackage{gensymb}
+\usepackage{graphicx}
+\usepackage{esint}
+\usepackage{mdsymbol}
+\usepackage{esvect} 
+%\usepackage{lipsum}
+\usepackage{hhline}
+\usepackage{eurosym}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+\usepackage{commath}
+\usepackage{adjustbox}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{lscape}
+\usepackage[xspace]{ellipsis}
+\usepackage{color}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{afterpage}
+\makeatletter
+\lst@InstallKeywords k{attributes}{attributestyle}\slshape{attributestyle}{}ld
+\makeatother
+\lstset{language=C,breaklines=true,
+	basicstyle=\fontsize{11}{13}\selectfont\ttfamily,
+	keywordstyle=\color{blue}\ttfamily,
+	stringstyle=\color{red}\ttfamily,
+	commentstyle=\color{green}\ttfamily,
+	morecomment=[l][\color{magenta}]{\#},
+	morekeywords={uint8\_t, uint16\_t, uint32\_t, interrupt},
+	moreattributes={ISPI, SPIDAT, CS, T0\_OVERFLOW\_MAX, TH1, TH0, TL1, TL0, EDGE_VALUE}, % etc...
+	attributestyle = \bfseries\color{mymauve} % (for instance)
+}
+
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+\begin{document}
+\title{7-Segment SPI Slave Display}
+\author{Conor Dooley}
+\maketitle
+\section*{Display Behaviour}
+The display has 10 8-bit registers to control which digits appear on the screen. Register 0 acts as a bitmask to control which digits of the 7-Segment display are enabled. Registers 1 through 8 contain the value to display in the corresponding location, with index 1 appearing at the right hand side of the board and index 8 on the far left. Register 9 will control the radix point. These registers can be written to via SPI and at startup all will contain zero.\\
+Each bit in Register 0 and 9 are active high. Writing all zeros to these registers will disable all digits or radices respectively.
+Registers 1 through 8 expect an 8 bit unsigned integer of which only the lower 4 bits will be used. The value will be automatically decoded into the appropriate segments.
+\section*{SPI Behaviour}
+%TODO maximum permissable frequency
+The display can be controlled over SPI with the signals \texttt{spi\_sclk\_i}, \texttt{spi\_ss\_i} and \texttt{spi\_mosi\_i}, \texttt{spi\_miso\_o} all of which are idle high. The data is clocked on the positive edge of \texttt{spi\_sclk\_i}. The maximum transfer frequency is not yet established but the display is clocked at 5 MHz so the recommended maximum SPI clock is 25 MHz.\\
+Each transaction is 16 bits long, which is transferred in two 8 bit sections. The upper byte is sent first and each byte is MSB first. The 16 bit long message is broken up as follows:
+\begin{table}[!h]
+	\begin{center} 
+		\begin{tabular}{|c|c|c|c| c|c|c|c| c|c|c|c| c|c|c|c|}
+			15 & 14 & 13 & 12 & 11 & 10 & 09 & 08 & 07 & 06 & 05 & 04 & 03 & 02 & 01 & 00 \\
+			\multicolumn{4}{|c|}{command} & \multicolumn{4}{c|}{address} & \multicolumn{8}{c|}{display value}			
+		\end{tabular}
+	\end{center}
+\end{table}
+The only command that is currently valid is the write command of \texttt{0001}. The address is the 4 bit unsigned integer representation of the register number.
+
+
+	
+\end{document}
