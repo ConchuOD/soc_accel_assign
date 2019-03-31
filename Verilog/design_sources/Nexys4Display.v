@@ -1,3 +1,8 @@
+`timescale 1ns / 1ps    
+/*************************************************************************/
+/* Author: Conor Dooley 31/03/2019                                       */
+/* Digital & Embedded Systems Assignment 3                               */
+/*************************************************************************/
 module Nexys4Display (
     input   rst_low_i,
     input   clock_5meg_i,
@@ -9,10 +14,15 @@ module Nexys4Display (
     output  [15:0] digit_o
     );
     
-    localparam BYTE_WIDTH = 8;
+    /*************************************************************************/
+    /* Declarations                                                          */
+    /*************************************************************************/
+    
+    localparam BYTE_WIDTH    = 8;
     localparam NUM_REGISTERS = 10; //reg0 is enable, 1-8 are digits, 9 is radices
-    localparam ENABLE_REG = 0;
-      
+    localparam ENABLE_REG    = 0;
+    localparam RADIX_REG     = 9;
+    
     reg  [BYTE_WIDTH-1:0] register_digit_r      [NUM_REGISTERS-1:0];
     reg  [BYTE_WIDTH-1:0] register_digit_next_r [NUM_REGISTERS-1:0];
 
@@ -27,13 +37,17 @@ module Nexys4Display (
     wire                  spi_rx_transfer_complete_next_c;
     
     reg  [3:0]            rx_address_r;
-    wire [3:0]            rxi_command_c;
+    wire [3:0]            rx_command_c;
     reg  [BYTE_WIDTH-1:0] rx_value_r;
-    wire                  enable_c;
     
-    /*************************************************/
-    /* SPI Receiver                                  */
-    /*************************************************/
+    wire [31:0]           display_value_c;
+    wire [BYTE_WIDTH-1:0] display_radix_c;
+    
+    wire                  display_enable_c;
+    
+    /*************************************************************************/
+    /* SPI Receiver                                                          */
+    /*************************************************************************/
     
     //spi receiver implemented by shift register
     always @ (posedge spi_sclk_i or negedge rst_low_i)
@@ -93,10 +107,10 @@ module Nexys4Display (
     end
 
     
-    /*************************************************/
-    /* Message Decoding                              */
-    /*************************************************/
-       
+    /*************************************************************************/
+    /* Message Decoding                                                      */
+    /*************************************************************************/
+    
     assign rxi_command_c = spi_rx_u_byte_r[7:4];
     always @ (rxi_command_c,spi_rx_u_byte_r,spi_rx_l_byte_r)
     begin
@@ -109,45 +123,55 @@ module Nexys4Display (
             default: 
             begin
                 rx_address_r = 4'b1111;
-                rx_value_r   = 8'b0;
+                rx_value_r   = 8'd0;
             end
         endcase
     end
-        
-    /*************************************************/
-    /* Register Writing                              */
-    /*************************************************/
     
-    genvar inc;
+    /*************************************************************************/
+    /* Register Writing                                                      */
+    /*************************************************************************/
+    
+    genvar reg_inc;
     generate
-        for (inc = 0;inc <= NUM_REGISTERS-1;inc = inc+1)
+        for (reg_inc = 0;reg_inc <= NUM_REGISTERS-1;reg_inc = reg_inc+1)
         begin: REGISTERS
             always @ (posedge clock_5meg_i or negedge rst_low_i)
             begin
-                if (~rst_low_i)
-                begin
-                    register_digit_r[inc] <= 8'd0;               
-                end
-                else
-                begin
-                    register_digit_r[inc] <= register_digit_next_r[inc];               
-                end     
+                if (~rst_low_i) register_digit_r[reg_inc] <= 8'd0;               
+                else            register_digit_r[reg_inc] <= register_digit_next_r[reg_inc];      
             end
-            always @ (rx_address_r, rx_value_r, register_digit_r) //TODO only if transfer complete
+            always @ (rx_address_r, rx_value_r, register_digit_r)
             begin
-                if (spi_rx_transfer_complete_r && rx_address_r == inc[3:0]) register_digit_next_r[inc] = rx_value_r;
-                else                                                        register_digit_next_r[inc] = register_digit_r[inc];
+                if (spi_rx_transfer_complete_r && rx_address_r == reg_inc[3:0]) register_digit_next_r[reg_inc] = rx_value_r;
+                else                                                            register_digit_next_r[reg_inc] = register_digit_r[reg_inc];
             end            
         end
-    endgenerate        
+    endgenerate
     
-    DisplayInterface displayInterface ( //TODO
-        .clock 		(clock_5meg_i), // 5 MHz clock signal
-        .reset 		(~rst_low_i),   // reset signal, active high
-        .value 		(error_hex_x),  // input value to be displayed
-        .point 		(4'b1111),    	// radix markers to be displayed
-        .digit 		(digit_o),      // digit outputs
-        .segment 	(segment_o)  	// segment outputs
+    /*************************************************************************/
+    /* Register to Segment Conversion                                        */
+    /*************************************************************************/
+    
+    genvar digit_inc;
+    generate
+        for (digit_inc = 1;digit_inc <= 8;digit_inc = digit_inc+1)
+        begin: DIGITS
+            assign display_value_c[4*digit_inc-1:4*(digit_inc-1)] = register_digit_r[digit_inc][3:0]; 
+        end
+    endgenerate
+    
+    assign display_radix_c  = register_digit_r[RADIX_REG];
+    assign display_enable_c = register_digit_r[ENABLE_REG];
+    
+    DisplayInterface displayInterface (
+        .clock 		(clock_5meg_i),     // 5 MHz clock signal
+        .reset 		(~rst_low_i),       // reset signal, active high
+        .enable     (display_enable_c), // digit enable, enabled high
+        .value 		(display_value_c),  // input value to be displayed
+        .point 		(display_radix_c),  // radix markers to be displayed
+        .digit 		(digit_o),          // digit outputs
+        .segment 	(segment_o)  	    // segment outputs
     );
     
 endmodule

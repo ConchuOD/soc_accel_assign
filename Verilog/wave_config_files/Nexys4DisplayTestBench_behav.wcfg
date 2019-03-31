@@ -12,12 +12,12 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0fs"></ZoomStartTime>
-      <ZoomEndTime time="10975000001fs"></ZoomEndTime>
-      <Cursor1Time time="3100000000fs"></Cursor1Time>
+      <ZoomEndTime time="6580000001fs"></ZoomEndTime>
+      <Cursor1Time time="9400000000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="195"></NameColumnWidth>
-      <ValueColumnWidth column_width="126"></ValueColumnWidth>
+      <ValueColumnWidth column_width="122"></ValueColumnWidth>
    </column_width_setting>
    <WVObjectSize size="29" />
    <wvobject fp_name="/Nexys4DisplayTestBench/rst_pbn" type="logic">
@@ -108,11 +108,6 @@
       <obj_property name="ObjectShortName">spi_rx_bit_count_r[4:0]</obj_property>
       <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
-   <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_bit_count_next_c" type="array">
-      <obj_property name="ElementShortName">spi_rx_bit_count_next_c[4:0]</obj_property>
-      <obj_property name="ObjectShortName">spi_rx_bit_count_next_c[4:0]</obj_property>
-      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
-   </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_transfer_complete_r" type="logic">
       <obj_property name="ElementShortName">spi_rx_transfer_complete_r</obj_property>
       <obj_property name="ObjectShortName">spi_rx_transfer_complete_r</obj_property>
@@ -138,12 +133,16 @@
       <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/register_digit_r" type="array">
-      <obj_property name="ElementShortName">register_digit_r[8:0][7:0]</obj_property>
-      <obj_property name="ObjectShortName">register_digit_r[8:0][7:0]</obj_property>
+      <obj_property name="ElementShortName">register_digit_r[9:0][7:0]</obj_property>
+      <obj_property name="ObjectShortName">register_digit_r[9:0][7:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/register_digit_next_r" type="array">
-      <obj_property name="ElementShortName">register_digit_next_r[8:0][7:0]</obj_property>
-      <obj_property name="ObjectShortName">register_digit_next_r[8:0][7:0]</obj_property>
+      <obj_property name="ElementShortName">register_digit_next_r[9:0][7:0]</obj_property>
+      <obj_property name="ObjectShortName">register_digit_next_r[9:0][7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/Nexys4DisplayTestBench/dut/display_value_c" type="array">
+      <obj_property name="ElementShortName">display_value_c[31:0]</obj_property>
+      <obj_property name="ObjectShortName">display_value_c[31:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/enable_c" type="logic">
       <obj_property name="ElementShortName">enable_c</obj_property>
