@@ -1,3 +1,4 @@
 tex/*.aux
 tex/*.log
 tex/*.synctex.gz
+Verilog/design_sources/cortexm0ds_logic.v
