@@ -10,7 +10,7 @@ module Nexys4Display (
     );
     
     localparam BYTE_WIDTH = 8;
-    localparam NUM_REGISTERS = 9; //reg0 is enable, 1-8 are digits
+    localparam NUM_REGISTERS = 10; //reg0 is enable, 1-8 are digits, 9 is radices
     localparam ENABLE_REG = 0;
       
     reg  [BYTE_WIDTH-1:0] register_digit_r      [NUM_REGISTERS-1:0];
@@ -30,6 +30,7 @@ module Nexys4Display (
     wire [3:0]            rxi_command_c;
     reg  [BYTE_WIDTH-1:0] rx_value_r;
     wire                  enable_c;
+    
     /*************************************************/
     /* SPI Receiver                                  */
     /*************************************************/
