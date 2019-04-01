@@ -5,8 +5,8 @@
 /*************************************************************************/
 module Nexys4Display (
     input   rst_low_i,
-    input   clock_5meg_i,
-    input   spi_sclk_i, //idle high, posedge active, < clock_5meg_i
+    input   clk_5m_i,
+    input   spi_sclk_i, //idle high, posedge active, < clk_5m_i
     input   spi_ss_i,   //idle high
     input   spi_mosi_i, //idle high
     output  spi_miso_o, //idle high
@@ -25,6 +25,8 @@ module Nexys4Display (
     
     reg  [BYTE_WIDTH-1:0] register_digit_r      [NUM_REGISTERS-1:0];
     reg  [BYTE_WIDTH-1:0] register_digit_next_r [NUM_REGISTERS-1:0];
+    
+    wire                  spi_rx_clk;
 
     reg  [BYTE_WIDTH-1:0] spi_rx_shiftreg_r;
     wire [BYTE_WIDTH-1:0] spi_rx_shiftreg_next_c;
@@ -49,6 +51,8 @@ module Nexys4Display (
     /* SPI Receiver                                                          */
     /*************************************************************************/
     
+    assign spi_rx_clk = (~spi_ss_i) & spi_sclk_i;
+    
     //spi receiver implemented by shift register
     always @ (posedge spi_sclk_i or negedge rst_low_i)
     begin
@@ -56,7 +60,7 @@ module Nexys4Display (
         else            spi_rx_shiftreg_r <= spi_rx_shiftreg_next_c;
     end
     
-    assign spi_rx_shiftreg_next_c = {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i};
+    assign spi_rx_shiftreg_next_c = {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i}; //assign spi_rx_shiftreg_next_c = ({(BYTE_WIDTH){ (~spi_ss_i) }}) & {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i};
     
     //count the number of bits received
     always @ (posedge spi_sclk_i or negedge rst_low_i or posedge spi_rx_transfer_complete_r)
@@ -67,12 +71,12 @@ module Nexys4Display (
     
     always @ (spi_ss_i, spi_rx_transfer_complete_r, spi_rx_bit_count_r)
     begin
-        if (~spi_ss_i)             spi_rx_bit_count_next_r = spi_rx_bit_count_r + 1'b1;
-        else                       spi_rx_bit_count_next_r = spi_rx_bit_count_r;
+        if (~spi_ss_i) spi_rx_bit_count_next_r = spi_rx_bit_count_r + 1'b1;
+        else           spi_rx_bit_count_next_r = spi_rx_bit_count_r;
     end
     
     //is a transfer completed? if so set complete flag -> 16 bit transfers, 2^4 = 16 for bit select
-    always @ (posedge clock_5meg_i or negedge rst_low_i)
+    always @ (posedge clk_5m_i or negedge rst_low_i)
     begin
         if (~rst_low_i) spi_rx_transfer_complete_r <= 1'd0;
         else            spi_rx_transfer_complete_r <= spi_rx_transfer_complete_next_c;   
@@ -81,7 +85,7 @@ module Nexys4Display (
     assign spi_rx_transfer_complete_next_c = spi_rx_bit_count_r[4];
     
     //is a byte completed? if so read it out -> 16 bit transfers therefore @ 8 & 16 
-    always @ (posedge clock_5meg_i or negedge rst_low_i)
+    always @ (posedge clk_5m_i or negedge rst_low_i)
     begin
         if (~rst_low_i)
         begin
@@ -135,7 +139,7 @@ module Nexys4Display (
     generate
         for (reg_inc = 0;reg_inc <= NUM_REGISTERS-1;reg_inc = reg_inc+1)
         begin: REGISTERS
-            always @ (posedge clock_5meg_i or negedge rst_low_i)
+            always @ (posedge clk_5m_i or negedge rst_low_i)
             begin
                 if (~rst_low_i) register_digit_r[reg_inc] <= 8'd0;               
                 else            register_digit_r[reg_inc] <= register_digit_next_r[reg_inc];      
@@ -164,7 +168,7 @@ module Nexys4Display (
     assign display_enable_c = register_digit_r[ENABLE_REG];
     
     DisplayInterface displayInterface (
-        .clock 		(clock_5meg_i),     // 5 MHz clock signal
+        .clock 		(clk_5m_i),     // 5 MHz clock signal
         .reset 		(~rst_low_i),       // reset signal, active high
         .enable     (display_enable_c), // digit enable, enabled high
         .value 		(display_value_c),  // input value to be displayed
