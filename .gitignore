@@ -1,0 +1,5 @@
+tex/*.aux
+tex/*.log
+tex/*.synctex.gz
+verilog/design_sources/cortexm0ds_logic.v
+verilog/design_sources/CORTEXM0DS.v
