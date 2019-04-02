@@ -59,9 +59,10 @@
 //----------------------------------------------------------------------------
 // __primary_________100.000____________0.010
 
-module clock_gen (
+module clock_gen_50_5 (
     input         clk_in1,      // 100 MHz input clock
-    output        clk_out1,     // 50 MHz output clockz
+    output        clk_out1,     // 50 MHz output clock
+    output        clk_5_out,    // 5  Mhz output clock
     output        locked        // PLL lock indicator
     );
 
@@ -81,9 +82,10 @@ module clock_gen (
     wire        psdone_unused;
     wire        locked_int;
     wire        clkfbout_clk_wiz_0;
+    wire        clk_out1_clk_wiz_0;
+    wire        clk_out1_clk_wiz_1;
     wire        clkfbout_buf_clk_wiz_0;
     wire        clkfboutb_unused;
-    wire        clkout1_unused;
     wire        clkout2_unused;
     wire        clkout3_unused;
     wire        clkout4_unused;
@@ -95,12 +97,18 @@ module clock_gen (
   PLLE2_ADV
   #(.BANDWIDTH            ("OPTIMIZED"),
     .COMPENSATION         ("ZHOLD"),
-    .DIVCLK_DIVIDE        (1),
+    .DIVCLK_DIVIDE        (2),
     .CLKFBOUT_MULT        (8),
     .CLKFBOUT_PHASE       (0.000),
-    .CLKOUT0_DIVIDE       (16),
+
+    .CLKOUT0_DIVIDE       (8),
     .CLKOUT0_PHASE        (0.000),
     .CLKOUT0_DUTY_CYCLE   (0.500),
+
+    .CLKOUT1_DIVIDE       (80),
+    .CLKOUT1_PHASE        (0.000),
+    .CLKOUT1_DUTY_CYCLE   (0.500),
+
     .CLKIN1_PERIOD        (10.0),
     .REF_JITTER1          (0.010))
   plle2_adv_inst (
@@ -140,9 +148,14 @@ module clock_gen (
     .I (clkfbout_clk_wiz_0)
     );
 
-  BUFG clkout1_buf (
+  BUFG clkout0_buf (
     .O   (clk_out1),
     .I   (clk_out1_clk_wiz_0)
+    );
+
+  BUFG clkout1_buf (
+    .O   (clk_out1),
+    .I   (clk_out1_clk_wiz_1)
     );
 
 endmodule
