@@ -1,7 +1,7 @@
 module Nexys4DisplayTestBench ();
 
 	reg rst_pbn;
-    reg clk5_x,clk_spi_x;
+    reg clk6m25_x,clk_spi_x;
     reg spi_data,spi_ss;
     
     integer bits_to_send;
@@ -9,10 +9,10 @@ module Nexys4DisplayTestBench ();
 
 	initial
 	begin
-		clk5_x  = 1'b0;
+		clk6m25_x  = 1'b0;
 		forever
 		begin
-			#100 clk5_x = ~clk5_x;
+			#80 clk6m25_x = ~clk6m25_x;
 		end
 	end
     
@@ -56,7 +56,7 @@ module Nexys4DisplayTestBench ();
     
     Nexys4Display dut (
         .rst_low_i(rst_pbn),
-        .clk_5m_i(clk5_x),
+        .clk_5m_i(clk6m25_x),
         .spi_sclk_i(clk_spi_x),   //idle high, posedge active, < clock_5meg_i
         .spi_ss_i(spi_ss),     //idle high
         .spi_mosi_i(spi_data),   //idle high

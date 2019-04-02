@@ -48,11 +48,13 @@
 // 
 //----------------------------------------------------------------------------
 // User entered comments:  Clock generator created by Xilinx clock wizard
+//                         Modified to add a second output @ 6.25 MHz
 //----------------------------------------------------------------------------
 //  Output     Output      Phase    Duty Cycle   Pk-to-Pk     Phase
 //   Clock     Freq (MHz)  (degrees)    (%)     Jitter (ps)  Error (ps)
 //----------------------------------------------------------------------------
 // CLK_OUT1____50.000______0.000______50.0______167.017____114.212
+// CLK_OUT2____06.250______0.000______50.0______???.???____???.???
 //
 //----------------------------------------------------------------------------
 // Input Clock   Freq (MHz)    Input Jitter (UI)
@@ -62,7 +64,7 @@
 module clock_gen_50_5 (
     input         clk_in1,      // 100 MHz input clock
     output        clk_out1,     // 50 MHz output clock
-    output        clk_5_out,    // 5  Mhz output clock
+    output        clk_5_out,    // 6.25 Mhz output clock
     output        locked        // PLL lock indicator
     );
 
@@ -94,50 +96,52 @@ module clock_gen_50_5 (
     wire        clkfbstopped_unused;
     wire        clkinstopped_unused;
 
-  PLLE2_ADV
-  #(.BANDWIDTH            ("OPTIMIZED"),
-    .COMPENSATION         ("ZHOLD"),
-    .DIVCLK_DIVIDE        (2),
-    .CLKFBOUT_MULT        (8),
-    .CLKFBOUT_PHASE       (0.000),
-
-    .CLKOUT0_DIVIDE       (8),
-    .CLKOUT0_PHASE        (0.000),
-    .CLKOUT0_DUTY_CYCLE   (0.500),
-
-    .CLKOUT1_DIVIDE       (80),
-    .CLKOUT1_PHASE        (0.000),
-    .CLKOUT1_DUTY_CYCLE   (0.500),
-
-    .CLKIN1_PERIOD        (10.0),
-    .REF_JITTER1          (0.010))
-  plle2_adv_inst (
-    // Output clocks
-    .CLKFBOUT            (clkfbout_clk_wiz_0),
-    .CLKOUT0             (clk_out1_clk_wiz_0),
-    .CLKOUT1             (clkout1_unused),
-    .CLKOUT2             (clkout2_unused),
-    .CLKOUT3             (clkout3_unused),
-    .CLKOUT4             (clkout4_unused),
-    .CLKOUT5             (clkout5_unused),
-     // Input clock control
-    .CLKFBIN             (clkfbout_buf_clk_wiz_0),
-    .CLKIN1              (clk_in1_clk_wiz_0),
-    .CLKIN2              (1'b0),
-     // Tied to always select the primary input clock
-    .CLKINSEL            (1'b1),
-    // Ports for dynamic reconfiguration
-    .DADDR               (7'h0),
-    .DCLK                (1'b0),
-    .DEN                 (1'b0),
-    .DI                  (16'h0),
-    .DO                  (do_unused),
-    .DRDY                (drdy_unused),
-    .DWE                 (1'b0),
-    // Other control and status signals
-    .LOCKED              (locked_int),
-    .PWRDWN              (1'b0),
-    .RST                 (1'b0));
+    PLLE2_ADV #(
+        .BANDWIDTH            ("OPTIMIZED"),
+        .COMPENSATION         ("ZHOLD"),
+        .DIVCLK_DIVIDE        (1),
+        .CLKFBOUT_MULT        (8),
+        .CLKFBOUT_PHASE       (0.000),
+        
+        .CLKOUT0_DIVIDE       (16),
+        .CLKOUT0_PHASE        (0.000),
+        .CLKOUT0_DUTY_CYCLE   (0.500),
+        
+        .CLKOUT1_DIVIDE       (128),
+        .CLKOUT1_PHASE        (0.000),
+        .CLKOUT1_DUTY_CYCLE   (0.500),
+        
+        .CLKIN1_PERIOD        (10.0),
+        .REF_JITTER1          (0.010)
+    )
+    plle2_adv_inst 
+    (
+        // Output clocks
+        .CLKFBOUT            (clkfbout_clk_wiz_0),
+        .CLKOUT0             (clk_out1_clk_wiz_0),
+        .CLKOUT1             (clk_out1_clk_wiz_1),
+        .CLKOUT2             (clkout2_unused),
+        .CLKOUT3             (clkout3_unused),
+        .CLKOUT4             (clkout4_unused),
+        .CLKOUT5             (clkout5_unused),
+        // Input clock control
+        .CLKFBIN             (clkfbout_buf_clk_wiz_0),
+        .CLKIN1              (clk_in1_clk_wiz_0),
+        .CLKIN2              (1'b0),
+        // Tied to always select the primary input clock
+        .CLKINSEL            (1'b1),
+        // Ports for dynamic reconfiguration
+        .DADDR               (7'h0),
+        .DCLK                (1'b0),
+        .DEN                 (1'b0),
+        .DI                  (16'h0),
+        .DO                  (do_unused),
+        .DRDY                (drdy_unused),
+        .DWE                 (1'b0),
+        // Other control and status signals
+        .LOCKED              (locked_int),
+        .PWRDWN              (1'b0),
+        .RST                 (1'b0));
 
 
   assign locked = locked_int;
@@ -154,7 +158,7 @@ module clock_gen_50_5 (
     );
 
   BUFG clkout1_buf (
-    .O   (clk_out1),
+    .O   (clk_5_out),
     .I   (clk_out1_clk_wiz_1)
     );
 
