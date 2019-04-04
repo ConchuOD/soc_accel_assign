@@ -13,12 +13,15 @@
 #define ADXL_WRITE_COMMAND      = 0x0A
 #define ADXL_READ_COMMAND       = 0x0B
 #define ADXL_READ_FIFO_COMMAND  = 0x0D
+#define ADXL_STATUS_REGISTER    = 0x0B
 #define DISPLAY_WRITE_COMMAND   = 0x01
 #define DISPLAY_ENABLE_REG      = 0x00
 #define DISPLAY_ENABLE_ALL      = 0xFF
 
 #define ADXL_SS_POS    = 0
 #define DISPLAY_SS_POS = 1
+
+#define adxl_send_junk_byte()   adxl_send_byte(0xFF)
 
 
 
@@ -54,7 +57,6 @@ void ADXL_ISR()
 {
     g_data_ready_flag = True;
 }
-//%TODO casting
 void adxl_send_read_command(uint8 address_to_read)
 {
     uint16 half_word_to_send;
@@ -86,7 +88,17 @@ void adxl_send_half_word(uint16 data_to_send) // %TODO this function should mayb
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();
 }
-void adxl_read_status(){} //TODO this function
+void adxl_read_status()
+{
+    adxl_send_read_command(ADXL_STATUS_REGISTER);
+    while(!SPI_WRITE_COMPLETE){}
+    adxl_send_junk_byte(); 
+    while(!SPI_WRITE_COMPLETE){}
+    spi_clear_ss();
+    while(!SPI_DATA_READY){}
+    rx_word = spi_read_word();
+
+}
 void adxl_init()
 {
     //write to 2C - 
@@ -183,7 +195,7 @@ int main(void) {
         {
             //disable interruts TODO
             g_data_ready_flag = False;
-            adxl_send_read_command(0x00);
+            adxl_send_read_command(0x00); //TODO do I need to
             while(!SPI_DATA_READY){}
             first_adxl_word = spi_read_word();
             adxl_x_data = uint16( ((first_adxl_word & 0xFF) << 8) | ((first_adxl_word >> 8) & 0xFF) ); //%TODO may change - see spec
