@@ -9,18 +9,20 @@ module SPIShiftReg
     // - have an idle high SPI_clk
 )
 (   
-    input wire       clk_i,
-    input wire       rstn_i,
-    input wire       data_bit_i,
-    input wire [7:0] data_i,
-    input wire       load_data_en_i,
-    input wire       shift_en_i,
-    output wire      shift_out_o
+    input  wire       clk_i,
+    input  wire       rstn_i,
+    input  wire       data_bit_i,
+    input  wire [7:0] data_i,
+    output wire [7:0] data_o,
+    input  wire       load_data_en_i,
+    input  wire       shift_en_i,
+    output wire       shift_out_o
 ); 
 
 reg[7:0] shift_reg_r;
 
-assign shift_out_o = shift_reg_r[7];        
+assign shift_out_o = shift_reg_r[7]; 
+assign data_o      = shift_reg_r;       
 
 generate
     // Read shift register
