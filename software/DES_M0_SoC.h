@@ -9,6 +9,11 @@ typedef   signed short int   int16;
 typedef unsigned       int  uint32;
 typedef   signed       int   int32;
 
+#define bit_read(value, bit) (((value) >> (bit)) & 0x01)
+#define bit_set(value, bit) ((value) |= (1UL << (bit)))
+#define bit_clear(value, bit) ((value) &= ~(1UL << (bit)))
+#define bit_write(value, bit, bitvalue) ((bitvalue) ? bitSet((value), (bit)) : bitClear((value), (bit)))
+
 #pragma anon_unions
 typedef struct {
 	union {
@@ -81,11 +86,15 @@ typedef struct
     union
     {
 		volatile uint16  write;
-		volatile uint32  reserved3;
+		volatile uint32  reserved2;
 	};
 	volatile uint32 read;
 } SPI_t;
-#define SPI_DATA_READY_BIT 31
+
+#define SPI_DATA_READY_BIT 		  0
+#define SPI_TRANSMIT_COMPLETE_BIT 1
+#define SPI_WRITE_COMPLETE        bit_read(pt2SPI->control, SPI_TRANSMIT_COMPLETE_BIT)
+#define SPI_DATA_READY            bit_read(pt2SPI->control, SPI_DATA_READY_BIT)
 
 // use above typedefs to define the memory map.
 #define pt2NVIC ((NVIC_t *)0xE000E100)
