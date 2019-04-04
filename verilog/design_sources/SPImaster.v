@@ -1,14 +1,15 @@
 module SPIMaster (
-    input wire       clk_i,
-    input wire       rstn_i,
-    input wire       rw_i,
-    input wire       ready_i,
-    input wire [7:0] spi_tx_data_i,
-    input wire       spi_miso_i,
-    output wire      spi_mosi_o,
-    output wire      spi_clk_o,
-    output wire      spi_ss_o,
-    output wire      ready_o
+    input  wire       clk_i,
+    input  wire       rstn_i,
+    input  wire       rw_i,
+    input  wire       ready_i,
+    input  wire [7:0] spi_tx_data_i,
+    output wire [7:0] spi_rx_data_o,
+    input  wire       spi_miso_i,
+    output wire       spi_mosi_o,
+    output wire       spi_clk_o,
+    output wire       spi_ss_o,
+    output wire       ready_o
 );
 
     wire load_clk_x, load_en_x;
@@ -23,6 +24,7 @@ module SPIMaster (
         .rstn_i(rstn_i),
         .data_bit_i(spi_miso_i),
         .data_i(8'd0),
+        .data_o(spi_rx_data_o);
         .load_data_en_i(load_en_x),
         .shift_en_i(shift_enable_x),
         .shift_out_o(spi_mosi_o)
@@ -36,6 +38,7 @@ module SPIMaster (
         .rstn_i(rstn_i),
         .data_bit_i(1'b0),
         .data_i(spi_tx_data_i),
+        .data_o(),
         .load_data_en_i(load_en_x),
         .shift_en_i(shift_enable_x),
         .shift_out_o(spi_mosi_o)
