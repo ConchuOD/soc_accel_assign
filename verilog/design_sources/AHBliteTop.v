@@ -14,19 +14,25 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 module AHBliteTop (
-    input clk,          // input clock from 100 MHz oscillator on Nexys4 board
-    input btnCpuReset,  // reset pushbutton, active low (CPU RESET)
-    input btnU,         // up button - if pressed after reset, ROM loader activated
-    input btnD,         // down button
-    input btnL,         // left button
-    input btnC,         // centre button
-    input btnR,         // right button
-    input RsRx,         // serial port receive line
-    input [15:0] sw,    // 16 slide switches on Nexys 4 board
-    output [15:0] led,   // 16 individual LEDs above slide switches   
-    output [5:0] rgbLED,   // multi-colour LEDs - {blu2, grn2, red2, blu1, grn1, red1} 
-    output [7:0] JA,    // monitoring connector on FPGA board - use with oscilloscope
-    output RsTx     // serial port transmit line
+    input         clk,         // input clock from 100 MHz oscillator on Nexys4 board
+    input         btnCpuReset, // reset pushbutton, active low (CPU RESET)
+    input         btnU,        // up button - if pressed after reset, ROM loader activated
+    input         btnD,        // down button
+    input         btnL,        // left button
+    input         btnC,        // centre button
+    input         btnR,        // right button
+    input         aclMOSI,     //
+    input         aclSCK,      //
+    input         aclSS,       //
+    input         aclInt1,     //
+    input         aclInt2,     //
+    input         RsRx,        // serial port receive line
+    input  [15:0] sw,          // 16 slide switches on Nexys 4 board
+    output [15:0] led,         // 16 individual LEDs above slide switches   
+    output [5:0]  rgbLED,      // multi-colour LEDs - {blu2, grn2, red2, blu1, grn1, red1} 
+    output [7:0]  JA,          // monitoring connector on FPGA board - use with oscilloscope
+    output        RsTx         // serial port transmit line
+    output        aclMISO,     //
     );
  
   localparam  BAD_DATA = 32'hdeadbeef;
@@ -132,7 +138,7 @@ module AHBliteTop (
     assign HRESP = 1'b0;    // no slaves use this signal yet
 
 // Connect appropriate bits of IRQ to any interrupt signals used, others 0
-    assign IRQ = {14'b0, uart_IRQ, 1'b0};     // only gpio interrupts in use yet, so all 0
+    assign IRQ = {13'b0, aclInt1, uart_IRQ, 1'b0};     // only gpio & ADXL interrupts in use yet, so all 0
 
 // Instantiate Cortex-M0 DesignStart processor and connect signals 
     CORTEXM0DS cpu (

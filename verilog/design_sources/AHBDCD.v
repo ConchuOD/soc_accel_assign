@@ -72,32 +72,37 @@ assign HSEL_NOMAP = dec[15]; // Output for invalid address
     
 always @ *
   case(HADDR[31:24])    // Just check top 8 bits of address
-    8'h00: 				// ROM : 0x0000_0000 to 0x00FF_FFFF  16MB
+    8'h00: 				// ROM  : 0x0000_0000 to 0x00FF_FFFF  16MB
       begin
-        dec = 16'b0000_0000_00000001;  // one-hot code for slave select
-        MUX_SEL = 4'd0;                // slave number for multiplexer
+            dec = 16'b0000_0000_00000001;  // one-hot code for slave select
+            MUX_SEL = 4'd0;                // slave number for multiplexer
       end
-    8'h20: 				// RAM : 0x2000_0000 to 0x20FF_FFFF  16MB
+    8'h20: 				// RAM  : 0x2000_0000 to 0x20FF_FFFF  16MB
         begin
-          dec = 16'b0000_0000_00000010;  // one-hot code 
-          MUX_SEL = 4'd1;                // slave number 
+            dec = 16'b0000_0000_00000010;  // one-hot code 
+            MUX_SEL = 4'd1;                // slave number 
         end
     8'h50: 				// GPIO : 0x5000_0000 to 0x50FF_FFFF  16MB
         begin
-          dec = 16'b0000_0000_00000100;  // one-hot code 
-          MUX_SEL = 4'd2;                // slave number 
+            dec = 16'b0000_0000_00000100;  // one-hot code 
+            MUX_SEL = 4'd2;                // slave number 
         end
     8'h51: 				// UART : 0x5100_0000 to 0x51FF_FFFF  16MB
         begin
-          dec = 16'b0000_0000_00001000;  // one-hot code 
-          MUX_SEL = 4'd3;                // slave number 
+            dec = 16'b0000_0000_00001000;  // one-hot code 
+            MUX_SEL = 4'd3;                // slave number 
+        end 
+    8'h52: 				// SPI  : 0x5200_0000 to 0x52FF_FFFF  16MB
+        begin
+            dec = 16'b0000_0000_00010000;  // one-hot code 
+            MUX_SEL = 4'd4;                // slave number 
         end    
 
     default: 			// address not mapped to any slave
-      begin
-        dec = 16'b1000_0000_00000000;   // activate NOMAP output
-        MUX_SEL = 4'd15;                // dummy slave 
-      end
+        begin
+            dec = 16'b1000_0000_00000000;   // activate NOMAP output
+            MUX_SEL = 4'd15;                // dummy slave 
+        end
   endcase
 
 endmodule

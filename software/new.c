@@ -1,13 +1,3 @@
-//------------------------------------------------------------------------------------------------------
-// Demonstration program for Cortex-M0 SoC design
-// 1)Enable the interrupt for UART - interrupt when character received
-// 2)Go to sleep mode
-// 3)On interruption, echo character back to the UART and collect into buffer
-// 4)When a whole sentence has been received, invert the case and send it back
-// 5)Loop forever doing the above.
-//
-// Version 4 - October 2015
-//------------------------------------------------------------------------------------------------------
 #include <stdio.h>
 #include "DES_M0_SoC.h"
 
@@ -23,6 +13,7 @@
 volatile uint8  counter  = 0; // current number of char received on UART currently in RxBuf[]
 volatile uint8  BufReady = 0; // Flag to indicate if there is a sentence worth of data in RxBuf
 volatile uint8  RxBuf[BUF_SIZE];
+volatile _Bool  g_data_ready_flag;
 
 
 //////////////////////////////////////////////////////////////////
@@ -31,7 +22,7 @@ volatile uint8  RxBuf[BUF_SIZE];
 void UART_ISR()     
 {
     char c;
-    c = pt2UART->RxData;     // read a character from UART - interrupt only occurs when character waiting
+    c = pt2UART->RxData;   // read a character from UART - interrupt only occurs when character waiting
     RxBuf[counter]  = c;   // Store in buffer
     counter++;             // Increment counter to indicate that there is now 1 more character in buffer
     pt2UART->TxData = c;   // write (echo) the character to UART (assuming transmit queue not full!)
@@ -46,15 +37,22 @@ void UART_ISR()
     }
 }
 
+void ADXL_ISR()
+{
+    g_data_ready_flag = True;
+}
+
+void send_adxl_read_command(uint8 address_to_read);
 
 //////////////////////////////////////////////////////////////////
 // Software delay function
 //////////////////////////////////////////////////////////////////
 void wait_n_loops(uint32 n) {
     volatile uint32 i;
-        for(i=0;i<n;i++){
-            ;
-        }
+    for(i=0;i<n;i++)
+    {
+        ;
+    }
 }
 
 
@@ -62,15 +60,37 @@ void wait_n_loops(uint32 n) {
 // Main Function
 //////////////////////////////////////////////////////////////////
 int main(void) {
+    uint16 adxl_x_data, adxl_y_data, adxl_z_data;
+    uint32 first_adxl_word, second_adxl_word;
+    
+    
     uint8 i;
     uint8 TxBuf[ARRAY_SIZE(RxBuf)];
 
     
     pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);       // Enable rx data available interrupt, and no others.
-  pt2NVIC->Enable    = (1 << NVIC_UART_BIT_POS);                                // Enable interrupts for UART in the NVIC
+    pt2NVIC->Enable  = (1 << NVIC_UART_BIT_POS);                                // Enable interrupts for UART in the NVIC
+    pt2NVIC->Enable  = (1 << NVIC_ADXL_BIT_POS);                                // Enable interrupts for ADXL in the NVIC
     wait_n_loops(nLOOPS_per_DELAY);                                     // wait a little
     
     printf("\r\nConor/Andrew Assignment 3\r\n");            // output welcome message
+    
+    for(;;)
+    {
+        if(g_data_ready_flag) // use sleep somehow
+        {
+            g_data_ready_flag = False;
+            send_adxl_read_command(0x00);
+            while(!SPI_DATA_READY_BIT){}
+            first_adxl_word = SPI_READ_BUFFER;
+            while(!SPI_DATA_READY_BIT){}
+            set_adxl_ss(False);
+            second_adxl_word = SPI_READ_BUFFER;
+            adxl_x_data = uint16( ((first_adxl_word & 0xFF) << 8) | ((first_adxl_word >> 8) & 0xFF) ); //move to before rx2?
+            adxl_y_data = uint16( (((second_adxl_word >> 16) & 0xFF) << 8) | ((second_adxl_word >> 24) & 0xFF) );
+            adxl_z_data = uint16( ((second_adxl_word & 0xFF) << 8) | ((second_adxl_word >> 8) & 0xFF) );           
+        }
+    }
 
     
     while(1){           // loop forever
