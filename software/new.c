@@ -10,6 +10,21 @@
 
 #define ARRAY_SIZE(__x__)       (sizeof(__x__)/sizeof(__x__[0]))
 
+#define ADXL_WRITE_COMMAND      = 0x0A
+#define ADXL_READ_COMMAND       = 0x0B
+#define ADXL_READ_FIFO_COMMAND  = 0x0D
+#define ADXL_STATUS_REGISTER    = 0x0B
+#define DISPLAY_WRITE_COMMAND   = 0x01
+#define DISPLAY_ENABLE_REG      = 0x00
+#define DISPLAY_ENABLE_ALL      = 0xFF
+
+#define ADXL_SS_POS    = 0
+#define DISPLAY_SS_POS = 1
+
+#define adxl_send_junk_byte()   adxl_send_byte(0xFF)
+
+
+
 volatile uint8  counter  = 0; // current number of char received on UART currently in RxBuf[]
 volatile uint8  BufReady = 0; // Flag to indicate if there is a sentence worth of data in RxBuf
 volatile uint8  RxBuf[BUF_SIZE];
@@ -37,12 +52,106 @@ void UART_ISR()
     }
 }
 
+//ADXL362
 void ADXL_ISR()
 {
     g_data_ready_flag = True;
 }
+void adxl_send_read_command(uint8 address_to_read)
+{
+    uint16 half_word_to_send;
+    half_word_to_send = (uint32(ADXL_READ_COMMAND) << 16) | address_to_read;
+    spi_set_ss(ADXL_SS_POS);
+    spi_send_half_word(half_word_to_send);
+    //dont clear SS
+}
+void adxl_send_write_command(uint8 address_to_write)
+{
+    uint16 half_word_to_send;
+    half_word_to_send = (uint32(ADXL_WRITE_COMMAND) << 16) | address_to_write;
+    spi_set_ss(ADXL_SS_POS);
+    spi_send_half_word(half_word_to_send);
+    //dont clear SS
 
-void send_adxl_read_command(uint8 address_to_read);
+}
+void adxl_send_byte(uint8 data_to_send) // %TODO this function should maybe allow for cont. writes
+{
+    //dont need to set SS low as it already will be done
+    spi_send_byte(data_to_send);
+    while(!SPI_WRITE_COMPLETE){}
+    spi_clear_ss();
+}
+void adxl_send_half_word(uint16 data_to_send) // %TODO this function should maybe allow for cont. writes
+{
+    //dont need to set SS low as it already will be done
+    spi_send_byte(data_to_send);
+    while(!SPI_WRITE_COMPLETE){}
+    spi_clear_ss();
+}
+void adxl_read_status()
+{
+    adxl_send_read_command(ADXL_STATUS_REGISTER);
+    while(!SPI_WRITE_COMPLETE){}
+    adxl_send_junk_byte(); 
+    while(!SPI_WRITE_COMPLETE){}
+    spi_clear_ss();
+    while(!SPI_DATA_READY){}
+    rx_word = spi_read_word();
+
+}
+void adxl_init()
+{
+    //write to 2C - 
+    adxl_send_write_command(0x2C);
+    adxl_send_byte(0x11);
+    //write to 2D - 
+    adxl_send_write_command(0x2D);
+    adxl_send_byte(0x02);
+    //write to 2A - need to set interrupts active high &map DATA_READY
+    adxl_send_write_command(0x2A);
+    adxl_send_byte(0x81);
+
+}
+
+void display_send_write_data(uint8 address_to_write, uint8 value_to_write)
+{
+    uint16 half_word_to_send;
+    half_word_to_send = ( uint16(DISPLAY_WRITE_COMMAND) << 12 ) | ( uint16(address_to_write & 0x0F) << 8 ) | uint16(value_to_write);
+    spi_set_ss(DISPLAY_SS_POS);
+    spi_send_half_word(half_word_to_send);
+    while(!SPI_WRITE_COMPLETE){}
+    spi_clear_ss();    
+}
+void display_enable_all_digits();
+{
+    uint16 half_word_to_send;
+    half_word_to_send = ( uint16(DISPLAY_WRITE_COMMAND) << 12 ) | ( uint16(DISPLAY_ENABLE_REG) << 8 ) | uint16(DISPLAY_ENABLE_ALL);
+    spi_set_ss(DISPLAY_SS_POS);
+    spi_send_half_word(half_word_to_send);
+    while(!SPI_WRITE_COMPLETE){}
+    spi_clear_ss();    
+}
+
+//SPI
+uint32 spi_read_word()
+{
+    return pt2SPI->read;
+}
+void spi_send_half_word(uint16 half_word_to_send)
+{
+    pt2SPI->write = half_word_to_send;
+}
+void spi_set_ss(uint8 ss_pos)
+{
+    uint32 one_hot_ss = 0x00000000;
+    one_hot_ss = (0x00000000) | (1UL << (bit));
+    pt2SPI->slave_select = one_hot_ss;
+
+}
+void spi_clear_ss()
+{
+    pt2SPI->slave_select = 0x00000000;    
+}
 
 //////////////////////////////////////////////////////////////////
 // Software delay function
@@ -55,7 +164,6 @@ void wait_n_loops(uint32 n) {
     }
 }
 
-
 //////////////////////////////////////////////////////////////////
 // Main Function
 //////////////////////////////////////////////////////////////////
@@ -67,7 +175,12 @@ int main(void) {
     uint8 i;
     uint8 TxBuf[ARRAY_SIZE(RxBuf)];
 
-    
+    //spi setup
+    //adxl setup
+    adxl_init();
+    //display setup
+    display_enable_all_digits();
+
     pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);       // Enable rx data available interrupt, and no others.
     pt2NVIC->Enable  = (1 << NVIC_UART_BIT_POS);                                // Enable interrupts for UART in the NVIC
     pt2NVIC->Enable  = (1 << NVIC_ADXL_BIT_POS);                                // Enable interrupts for ADXL in the NVIC
@@ -77,16 +190,18 @@ int main(void) {
     
     for(;;)
     {
+        __wfi(); 
         if(g_data_ready_flag) // use sleep somehow
         {
+            //disable interruts TODO
             g_data_ready_flag = False;
-            send_adxl_read_command(0x00);
-            while(!SPI_DATA_READY_BIT){}
-            first_adxl_word = SPI_READ_BUFFER;
-            while(!SPI_DATA_READY_BIT){}
-            set_adxl_ss(False);
-            second_adxl_word = SPI_READ_BUFFER;
-            adxl_x_data = uint16( ((first_adxl_word & 0xFF) << 8) | ((first_adxl_word >> 8) & 0xFF) ); //move to before rx2?
+            adxl_send_read_command(0x00); //TODO do I need to
+            while(!SPI_DATA_READY){}
+            first_adxl_word = spi_read_word();
+            adxl_x_data = uint16( ((first_adxl_word & 0xFF) << 8) | ((first_adxl_word >> 8) & 0xFF) ); //%TODO may change - see spec
+            while(!SPI_DATA_READY){}
+            spi_clear_ss();
+            second_adxl_word = spi_read_word();
             adxl_y_data = uint16( (((second_adxl_word >> 16) & 0xFF) << 8) | ((second_adxl_word >> 24) & 0xFF) );
             adxl_z_data = uint16( ((second_adxl_word & 0xFF) << 8) | ((second_adxl_word >> 8) & 0xFF) );           
         }
