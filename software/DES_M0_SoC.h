@@ -93,8 +93,8 @@ typedef struct
 
 #define SPI_DATA_READY_BIT 		  0
 #define SPI_TRANSMIT_COMPLETE_BIT 1
-#define SPI_WRITE_COMPLETE      bit_read(pt2SPI->control, SPI_TRANSMIT_COMPLETE_BIT)
-#define SPI_DATA_READY          bit_read(pt2SPI->control, SPI_DATA_READY_BIT)
+#define SPI_WRITE_COMPLETE        bit_read(pt2SPI->control, SPI_TRANSMIT_COMPLETE_BIT)
+#define SPI_DATA_READY            bit_read(pt2SPI->control, SPI_DATA_READY_BIT)
 
 // use above typedefs to define the memory map.
 #define pt2NVIC ((NVIC_t *)0xE000E100)

@@ -76,7 +76,8 @@ void adxl_send_write_command(uint8 address_to_write)
 }
 void adxl_send_byte(uint8 data_to_send) // %TODO this function should maybe allow for cont. writes
 {
-    //dont need to set SS low as it already will be done
+    //dont need to set SS low as it already will be done TODO
+    //spi_set_ss(ADXL_SS_POS);
     spi_send_byte(data_to_send);
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();
@@ -88,16 +89,19 @@ void adxl_send_half_word(uint16 data_to_send) // %TODO this function should mayb
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();
 }
-void adxl_read_status()
+uint8 adxl_read_status()
 {
+    uint8 rx_word;
+
     adxl_send_read_command(ADXL_STATUS_REGISTER);
     while(!SPI_WRITE_COMPLETE){}
-    adxl_send_junk_byte(); 
+    adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();
     while(!SPI_DATA_READY){}
     rx_word = spi_read_word();
-
+    
+    return rx_word;
 }
 void adxl_init()
 {
@@ -168,34 +172,39 @@ void wait_n_loops(uint32 n) {
 // Main Function
 //////////////////////////////////////////////////////////////////
 int main(void) {
-    uint16 adxl_x_data, adxl_y_data, adxl_z_data;
-    uint32 first_adxl_word, second_adxl_word;
+    uint8  adxl_x_ls8;
+    uint16 adxl_x_data;
+    uint16 adxl_y_data;
+    uint16 adxl_z_data;
+    uint32 first_adxl_word
+    uint32 second_adxl_word;
     
     
     uint8 i;
     uint8 TxBuf[ARRAY_SIZE(RxBuf)];
 
+    //enable interrupts
+    pt2NVIC->Enable  = (1 << NVIC_UART_BIT_POS);    // Enable interrupts for UART in the NVIC
+    pt2NVIC->Enable  = (1 << NVIC_ADXL_BIT_POS);    // Enable interrupts for ADXL in the NVIC
     //spi setup
     //adxl setup
     adxl_init();
     //display setup
     display_enable_all_digits();
 
-    pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);       // Enable rx data available interrupt, and no others.
-    pt2NVIC->Enable  = (1 << NVIC_UART_BIT_POS);                                // Enable interrupts for UART in the NVIC
-    pt2NVIC->Enable  = (1 << NVIC_ADXL_BIT_POS);                                // Enable interrupts for ADXL in the NVIC
-    wait_n_loops(nLOOPS_per_DELAY);                                     // wait a little
+    pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);   // Enable rx data available interrupt, and no others.
+    wait_n_loops(nLOOPS_per_DELAY);                             // wait a little
     
-    printf("\r\nConor/Andrew Assignment 3\r\n");            // output welcome message
+    printf("\r\nConor/Andrew Assignment 3\r\n");                // output welcome message
     
-    for(;;)
+    for(;/*ever*/;)
     {
-        __wfi(); 
-        if(g_data_ready_flag) // use sleep somehow
+        __wfi(); // use sleep somehow
+        if(g_data_ready_flag) 
         {
             //disable interruts TODO
             g_data_ready_flag = False;
-            adxl_send_read_command(0x00); //TODO do I need to
+            adxl_send_read_command(0x00); //TODO do I need to send junk to wait?
             while(!SPI_DATA_READY){}
             first_adxl_word = spi_read_word();
             adxl_x_data = uint16( ((first_adxl_word & 0xFF) << 8) | ((first_adxl_word >> 8) & 0xFF) ); //%TODO may change - see spec
@@ -203,7 +212,9 @@ int main(void) {
             spi_clear_ss();
             second_adxl_word = spi_read_word();
             adxl_y_data = uint16( (((second_adxl_word >> 16) & 0xFF) << 8) | ((second_adxl_word >> 24) & 0xFF) );
-            adxl_z_data = uint16( ((second_adxl_word & 0xFF) << 8) | ((second_adxl_word >> 8) & 0xFF) );           
+            adxl_z_data = uint16( ((second_adxl_word & 0xFF) << 8) | ((second_adxl_word >> 8) & 0xFF) );    
+            adxl_x_ls8  = uint8( adxl_x_data & 0x00FF );
+            display_send_write_data(0x01,adxl_x_ls8);
         }
     }
 
