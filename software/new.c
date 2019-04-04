@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "DES_M0_SoC.h"
 
 #define BUF_SIZE                100
@@ -13,7 +14,7 @@
 volatile uint8  counter  = 0; // current number of char received on UART currently in RxBuf[]
 volatile uint8  BufReady = 0; // Flag to indicate if there is a sentence worth of data in RxBuf
 volatile uint8  RxBuf[BUF_SIZE];
-volatile _Bool  g_data_ready_flag;
+volatile bool   g_data_ready_flag;
 
 
 //////////////////////////////////////////////////////////////////
@@ -39,7 +40,7 @@ void UART_ISR()
 
 void ADXL_ISR()
 {
-    g_data_ready_flag = True;
+    g_data_ready_flag = true;
 }
 
 void send_adxl_read_command(uint8 address_to_read);
@@ -79,7 +80,7 @@ int main(void) {
     {
         if(g_data_ready_flag) // use sleep somehow
         {
-            g_data_ready_flag = False;
+            g_data_ready_flag = false;
             send_adxl_read_command(0x00);
             while(!SPI_DATA_READY_BIT){}
             first_adxl_word = SPI_READ_BUFFER;
