@@ -35,7 +35,7 @@ module DisplayInterface (
     //2 bit counter selects which 4 bits to send to hex2seg, which point bit to use, and which digit to light up
     always @ (posedge clock or posedge reset)
     begin
-        if(reset)           countOutput <= 2'd0;
+        if(reset)           countOutput <= 3'd0;
         else if (enableReg) countOutput <= nextCount;
         else                countOutput <= countOutput; 
     end
@@ -78,16 +78,16 @@ module DisplayInterface (
     always @ (countOutput, point)
     begin
         case(countOutput)
-            3'b000: radixOut = point[0];
-            3'b001: radixOut = point[1]; 
-            3'b010: radixOut = point[2];
-            3'b011: radixOut = point[3];
-            3'b100: radixOut = point[4];
-            3'b101: radixOut = point[5];
-            3'b110: radixOut = point[6];
-            3'b111: radixOut = point[7]; 
+            3'b000: radixOut = ~point[0];
+            3'b001: radixOut = ~point[1]; 
+            3'b010: radixOut = ~point[2];
+            3'b011: radixOut = ~point[3];
+            3'b100: radixOut = ~point[4];
+            3'b101: radixOut = ~point[5];
+            3'b110: radixOut = ~point[6];
+            3'b111: radixOut = ~point[7]; 
         endcase
     end
     //7 bit pattern + 1 bit radix point to 8 bit segment output
-    assign segment = { segSeven[6:0], radixOut } & {(8){enable[countOutput]}}; //enable mask 
+    assign segment = { segSeven[6:0], radixOut };// & {(8){enable[countOutput]}}; //enable mask 
 endmodule

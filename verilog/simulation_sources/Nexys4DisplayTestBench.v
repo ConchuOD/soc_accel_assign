@@ -56,7 +56,7 @@ module Nexys4DisplayTestBench ();
     
     Nexys4Display dut (
         .rst_low_i(rst_pbn),
-        .clk_5m_i(clk6m25_x),
+        .block_clk_i(clk6m25_x),
         .spi_sclk_i(clk_spi_x),   //idle high, posedge active, < clock_5meg_i
         .spi_ss_i(spi_ss),     //idle high
         .spi_mosi_i(spi_data),   //idle high

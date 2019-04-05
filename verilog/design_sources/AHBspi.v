@@ -1,22 +1,22 @@
 `timescale 1ns / 1ps
 
 module AHBspi (
-    input  wire        HCLK,
-    input  wire        HRESETn,
-    input  wire        HSEL,
-    input  wire        HREADY,          // Indicates previous AHB transaction completing
-    input  wire [31:0] HADDR,
-    input  wire        HWRITE,
-    input  wire [2:0]  HSIZE,
-    input  wire [31:0] HWDATA,
-    output wire [31:0] HRDATA,
-    output wire        HREADYOUT,
-    // SPI
-    input  wire        SPI_MISO_i,
-    output wire        SPI_MOSI_o,
-    output reg  [31:0] SPI_SS_o,
-    output wire        SPI_CLK_o
-)
+        input  wire        HCLK,
+        input  wire        HRESETn,
+        input  wire        HSEL,
+        input  wire        HREADY,          // Indicates previous AHB transaction completing
+        input  wire [31:0] HADDR,
+        input  wire        HWRITE,
+        input  wire [2:0]  HSIZE,
+        input  wire [31:0] HWDATA,
+        output wire [31:0] HRDATA,
+        output wire        HREADYOUT,
+        // SPI
+        input  wire        SPI_MISO_i,
+        output wire        SPI_MOSI_o,
+        output reg  [31:0] SPI_SS_o,
+        output wire        SPI_CLK_o
+    );
     
     localparam [2:0] CONTROL_STATUS_ADDR=3'b000, SPI_SLAVE_SELECT_ADDR=3'b001, SPI_WDATA_ADDR=3'b010; 
     localparam [7:0] CONTROL_STATUS_REG_BITMASK = 0xF0; 

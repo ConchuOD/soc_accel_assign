@@ -10,7 +10,7 @@ module Nexys4Display (
     input   spi_ss_i,   //idle high
     input   spi_mosi_i, //idle high
     output  spi_miso_o, //idle high
-    output  [7:0]  segment_o, 
+    output  [7:0] segment_o, 
     output  [7:0] digit_o
     );
     
@@ -141,10 +141,10 @@ module Nexys4Display (
         begin: REGISTERS
             always @ (posedge block_clk_i or negedge rst_low_i)
             begin
-                if (~rst_low_i) register_digit_r[reg_inc] <= 8'd0;               
+                if (~rst_low_i) register_digit_r[reg_inc] <= 8'h00; //TODO              
                 else            register_digit_r[reg_inc] <= register_digit_next_r[reg_inc];      
             end
-            always @ (rx_address_r, rx_value_r, register_digit_r)
+            always @ (rx_address_r, rx_value_r, register_digit_r, spi_rx_transfer_complete_r)
             begin
                 if (spi_rx_transfer_complete_r && rx_address_r == reg_inc[3:0]) register_digit_next_r[reg_inc] = rx_value_r;
                 else                                                            register_digit_next_r[reg_inc] = register_digit_r[reg_inc];

@@ -133,57 +133,67 @@ set_property PACKAGE_PIN L16 [get_ports {rgbLED[5]}]
 	set_property IOSTANDARD LVCMOS33 [get_ports {rgbLED[5]}]
 
 
-##7 segment display
-##Bank = 34, Pin name = IO_L2N_T0_34,						Sch name = CA
-#set_property PACKAGE_PIN L3 [get_ports {seg[0]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {seg[0]}]
-##Bank = 34, Pin name = IO_L3N_T0_DQS_34,					Sch name = CB
-#set_property PACKAGE_PIN N1 [get_ports {seg[1]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {seg[1]}]
-##Bank = 34, Pin name = IO_L6N_T0_VREF_34,					Sch name = CC
-#set_property PACKAGE_PIN L5 [get_ports {seg[2]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {seg[2]}]
-##Bank = 34, Pin name = IO_L5N_T0_34,						Sch name = CD
-#set_property PACKAGE_PIN L4 [get_ports {seg[3]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {seg[3]}]
-##Bank = 34, Pin name = IO_L2P_T0_34,						Sch name = CE
-#set_property PACKAGE_PIN K3 [get_ports {seg[4]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {seg[4]}]
-##Bank = 34, Pin name = IO_L4N_T0_34,						Sch name = CF
-#set_property PACKAGE_PIN M2 [get_ports {seg[5]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {seg[5]}]
-##Bank = 34, Pin name = IO_L6P_T0_34,						Sch name = CG
-#set_property PACKAGE_PIN L6 [get_ports {seg[6]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {seg[6]}]
 
-##Bank = 34, Pin name = IO_L16P_T2_34,						Sch name = DP
-#set_property PACKAGE_PIN M4 [get_ports dp]							
-	#set_property IOSTANDARD LVCMOS33 [get_ports dp]
+#==================================================================================
 
-##Bank = 34, Pin name = IO_L18N_T2_34,						Sch name = AN0
-#set_property PACKAGE_PIN N6 [get_ports {an[0]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {an[0]}]
-##Bank = 34, Pin name = IO_L18P_T2_34,						Sch name = AN1
-#set_property PACKAGE_PIN M6 [get_ports {an[1]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {an[1]}]
-##Bank = 34, Pin name = IO_L4P_T0_34,						Sch name = AN2
-#set_property PACKAGE_PIN M3 [get_ports {an[2]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {an[2]}]
-##Bank = 34, Pin name = IO_L13_T2_MRCC_34,					Sch name = AN3
-#set_property PACKAGE_PIN N5 [get_ports {an[3]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {an[3]}]
-##Bank = 34, Pin name = IO_L3P_T0_DQS_34,					Sch name = AN4
-#set_property PACKAGE_PIN N2 [get_ports {an[4]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {an[4]}]
-##Bank = 34, Pin name = IO_L16N_T2_34,						Sch name = AN5
-#set_property PACKAGE_PIN N4 [get_ports {an[5]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {an[5]}]
-##Bank = 34, Pin name = IO_L1P_T0_34,						Sch name = AN6
-#set_property PACKAGE_PIN L1 [get_ports {an[6]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {an[6]}]
-##Bank = 34, Pin name = IO_L1N_T034,							Sch name = AN7
-#set_property PACKAGE_PIN M1 [get_ports {an[7]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {an[7]}]
+# 7-segment display.  This is a multiplexed display, with 8 digits.
+# Each digit has 8 segments (including a decimal point), with a common anode.
+# Segment cathode signals are common to all digits, and are active low.
+# Signal name segment_o[7:0], with segment_o[7] = A, segment_o[6] = B, . . .
+#			. . .	segment_o[1] = G, segment_o[0] = decimal point.
+#Bank = 34, Pin name = IO_L2N_T0_34,						Sch name = CA
+set_property PACKAGE_PIN L3 [get_ports {segment_o[7]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {segment_o[7]}]
+#Bank = 34, Pin name = IO_L3N_T0_DQS_34,					Sch name = CB
+set_property PACKAGE_PIN N1 [get_ports {segment_o[6]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {segment_o[6]}]
+#Bank = 34, Pin name = IO_L6N_T0_VREF_34,					Sch name = CC
+set_property PACKAGE_PIN L5 [get_ports {segment_o[5]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {segment_o[5]}]
+#Bank = 34, Pin name = IO_L5N_T0_34,						Sch name = CD
+set_property PACKAGE_PIN L4 [get_ports {segment_o[4]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {segment_o[4]}]
+#Bank = 34, Pin name = IO_L2P_T0_34,						Sch name = CE
+set_property PACKAGE_PIN K3 [get_ports {segment_o[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {segment_o[3]}]
+#Bank = 34, Pin name = IO_L4N_T0_34,						Sch name = CF
+set_property PACKAGE_PIN M2 [get_ports {segment_o[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {segment_o[2]}]
+#Bank = 34, Pin name = IO_L6P_T0_34,						Sch name = CG
+set_property PACKAGE_PIN L6 [get_ports {segment_o[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {segment_o[1]}]
+#Bank = 34, Pin name = IO_L16P_T2_34,						Sch name = DP
+set_property PACKAGE_PIN M4 [get_ports {segment_o[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {segment_o[0]}]
+
+# These are the digit select signals, also active low.
+# Signal names are digit_o[7:0], digit_o[7] on the left, digit_o[0] on the right.
+#Bank = 34, Pin name = IO_L18N_T2_34,						Sch name = AN0
+set_property PACKAGE_PIN N6 [get_ports {digit_o[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {digit_o[0]}]
+#Bank = 34, Pin name = IO_L18P_T2_34,						Sch name = AN1
+set_property PACKAGE_PIN M6 [get_ports {digit_o[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {digit_o[1]}]
+#Bank = 34, Pin name = IO_L4P_T0_34,						Sch name = AN2
+set_property PACKAGE_PIN M3 [get_ports {digit_o[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {digit_o[2]}]
+#Bank = 34, Pin name = IO_L13_T2_MRCC_34,					Sch name = AN3
+set_property PACKAGE_PIN N5 [get_ports {digit_o[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {digit_o[3]}]
+#Bank = 34, Pin name = IO_L3P_T0_DQS_34,					Sch name = AN4
+set_property PACKAGE_PIN N2 [get_ports {digit_o[4]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {digit_o[4]}]
+#Bank = 34, Pin name = IO_L16N_T2_34,						Sch name = AN5
+set_property PACKAGE_PIN N4 [get_ports {digit_o[5]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {digit_o[5]}]
+#Bank = 34, Pin name = IO_L1P_T0_34,						Sch name = AN6
+set_property PACKAGE_PIN L1 [get_ports {digit_o[6]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {digit_o[6]}]
+#Bank = 34, Pin name = IO_L1N_T034,							Sch name = AN7
+set_property PACKAGE_PIN M1 [get_ports {digit_o[7]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {digit_o[7]}]
+
+#==================================================================================
 
 
 

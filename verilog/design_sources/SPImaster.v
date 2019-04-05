@@ -1,16 +1,16 @@
 module SPIMaster (
-    input  wire       clk_i,
-    input  wire       rstn_i,
-    input  wire       rw_i,
-    input  wire       ready_i,
-    input  wire [7:0] spi_tx_data_i,
-    output wire [7:0] spi_rx_data_o,
-    input  wire       spi_miso_i,
-    output wire       spi_mosi_o,
-    output wire       spi_clk_o,
-    output wire       spi_ss_o,
-    output wire       ready_o
-);
+        input  wire       clk_i,
+        input  wire       rstn_i,
+        input  wire       rw_i,
+        input  wire       ready_i,
+        input  wire [7:0] spi_tx_data_i,
+        output wire [7:0] spi_rx_data_o,
+        input  wire       spi_miso_i,
+        output wire       spi_mosi_o,
+        output wire       spi_clk_o,
+        output wire       spi_ss_o,
+        output wire       ready_o
+    );
 
     wire load_clk_x, load_en_x;
     wire shift_enable_x; 
