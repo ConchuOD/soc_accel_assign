@@ -1,54 +1,46 @@
 module SPIMasterControl(
-    input wire clk_i,
-    input wire rstn_i,
-    input wire ready_i,
-    output wire load_data_en_o,
-    output wire shift_enable_o,
-    output wire load_clk_o,   
-    output wire spi_clk_o,
-    output wire ready_o
+    input  wire        clk_i,
+    input  wire        rstn_i,
+    input  wire        enable_i,
+    input  wire [31:0] write_data_i,
+    input  wire [ 7:0] read_data_i,
+    input  wire [ 2:0] write_data_bytes_valid_i,
+    output wire        load_shift_reg_byte_o,
+    output reg  [ 7:0] shift_reg_byte_o,
+    output wire        load_shift_reg_bit_o,
+    output reg         shift_reg_bit_o,
+    output wire        load_clk_o,   
+    output wire        spi_clk_o,
+    output wire [31:0] read_data_o,
+    output wire [ 2:0] read_data_bytes_valid_o
     // Need a signal to indicate the transaction bit length
     // Need parameter to indicate SPI clock idle value
 );
-    localparam SPI_CLK_IDLE = 1'b1;
 
-    // Processor clock registers
-    reg transaction_underway_r;  
-    
-    // SPI clock registers
-    reg spi_clk_waiting_r, loading_r, shifting_r, transaction_completed_r;
+    localparam IDLE = 1'b0, SHIFTING = 1'b1;
+    localparam SPI_CLOCK_IDLE = 1'b1;
+
     reg[4:0] count_r, next_count_r;
+    reg[31:0] read_data_r, write_data_r;
+    reg spi_clk_waiting_r;
+    reg ctrl_state_r;
+    reg loading_r, shifting_r;
     reg[3:0] bit_count_r;
-    
-    assign ready_o = ~transaction_underway_r;
-    
-    assign shift_enable_o = shifting_r;
-    assign load_data_en_o = loading_r;
-    
-    // Need to make sure that there are no extra negedges of spi_clk
-    assign spi_clk_o = shifting_r ? spi_clk_waiting_r : SPI_CLK_IDLE;
-    assign load_clk_o = spi_clk_waiting_r;
-    
-    always @(posedge clk_i) begin  
-        if(tx_state_r == IDLE && ready_i) begin
-            transaction_underway_r <= 1'b1;            
-        end
-        else if(transaction_completed_r) begin
-            transaction_underway_r  <= 1'b0;
-            transaction_completed_r <= 1'b0;            
-        end
-        
-        if(~rstn_i) begin
-            transaction_underway_r <= 1'b0;
-        end
-    end
-    
-    /// SPI clock generation ///
+    reg[2:0] byte_count_r;
+    reg[2:0] read_fill_level_bytes_r, read_fill_level_bytes_out_r;
+    reg new_byte_r;    
 
+    assign load_shift_reg_byte_o   = loading_r;
+    assign load_shift_reg_bit_o    = shifting_r;
+    assign load_clk_o              = spi_clk_waiting_r;
+    assign spi_clk_o               = shifting_r ? spi_clk_waiting_r : SPI_CLOCK_IDLE;
+    assign read_data_bytes_valid_o = read_fill_level_bytes_out_r;
+    assign read_data_o             = read_data_r;
+    
     always @(posedge clk_i) begin
         count_r <= next_count_r;
     end
-
+    
     // Need to generate SPI clk @ ~2.5 MHz when reading for 7 cycles,
     // currently much faster than that for ease of simulation
     always @(count_r, rstn_i) begin
@@ -65,33 +57,72 @@ module SPIMasterControl(
         end
     end
     
-    always @(negedge spi_clk_waiting_r) begin
-        if(transaction_underway_r && ~shifting_r) begin
-            loading_r <= 1'b1; // Load in entire SPI word
+    always @(negedge spi_clk_waiting_r) begin        
+        case (ctrl_state_r)
+        IDLE : begin
+            if(enable_i) begin
+                ctrl_state_r          <= SHIFTING;
+                // Load in word                
+                write_data_r          <= write_data_i;
+                loading_r             <= 1'b1;
+                shift_reg_byte_o      <= write_data_i[7:0];                
+            end
         end
         
-        if(loading_r) begin
-            loading_r            <= 1'b0;
-            shifting_r           <= 1'b1;
-        end
-        
-        if(shifting_r) begin
-            bit_count_r          <= bit_count_r + 4'd1;            
-        end
+        SHIFTING : begin
+            loading_r   <= 1'b0;
+            shifting_r  <= 1'b1;  
 
-        // This decimal 8 will change based on the transaction size
-        if(bit_count_r == 4'd7) begin 
-            bit_count_r             <= 4'd0; 
-            shifting_r              <= 1'b0;            
-            transaction_completed_r <= 1'b1;
-        end
-        
+            if(byte_count_r <= write_data_bytes_valid_i) begin
+                shift_reg_bit_o <= write_data_r[8*(byte_count_r) + bit_count_r];
+            end
+            else begin
+                shift_reg_bit_o <= 1'b1;
+            end
+            
+            bit_count_r <= bit_count_r + 4'd1;
+            
+            if(bit_count_r == 4'd7) begin 
+                bit_count_r             <= 4'd0;
+                read_fill_level_bytes_r <= (read_fill_level_bytes_r % 3'd4) + 3'd1;
+                byte_count_r            <= (byte_count_r + 3'd1) % 3'd4;
+                new_byte_r              <= 1'b1;
+                
+                // Only terminate on a byte boundary
+                if(~enable_i) begin
+                    ctrl_state_r                <= IDLE;
+                    read_data_r                 <= 32'b0;
+                    bit_count_r                 <= 4'd0;
+                    byte_count_r                <= 3'd0;
+                    read_fill_level_bytes_r     <= 3'd0;
+                    read_fill_level_bytes_out_r <= 3'd0;
+                    new_byte_r                  <= 1'b0;
+                    loading_r                   <= 1'b0;
+                    shifting_r                  <= 1'b0;
+                end
+            end
+            
+            // Capture the read bytes from the read shift register
+            // on the negedge clock AFTER the 8th bit has been written
+            if(new_byte_r) begin
+                read_data_r[8*(read_fill_level_bytes_r - 3'd1) +: 8] <= read_data_i;
+                read_fill_level_bytes_out_r <= read_fill_level_bytes_r;
+                new_byte_r <= 1'b0;
+            end
+        end 
+        endcase
+            
         if(~rstn_i) begin
-            bit_count_r             <= 4'd0;
-            loading_r               <= 1'b0;
-            shifting_r              <= 1'b0;  
-            transaction_completed_r <= 1'b0;
+            ctrl_state_r                <= IDLE;
+            read_data_r                 <= 32'b0;
+            bit_count_r                 <= 4'd0;
+            byte_count_r                <= 3'd0;
+            read_fill_level_bytes_r     <= 3'd0;
+            read_fill_level_bytes_out_r <= 3'd0;
+            new_byte_r                  <= 1'b0;
+            loading_r                   <= 1'b0;
+            shifting_r                  <= 1'b0;
         end
     end
-    
+
 endmodule

@@ -3,9 +3,8 @@
 module TB_SPImaster();
     reg HCLK;
     reg HRESETn;
-    reg spi_rw;
-    reg spi_ready_in;
-    reg[7:0] spi_tx_data;
+    reg spi_enable;
+    reg[31:0] spi_tx_data;
     
     wire load_data_en;
     wire write_shift_enable;
@@ -16,14 +15,15 @@ module TB_SPImaster();
     SPIMaster dut(
         .clk_i(HCLK),
         .rstn_i(HRESETn),
-        .rw_i(spi_rw),
-        .ready_i(spi_ready_in),
-        .spi_tx_data_i(spi_tx_data),
+        .enable_i(spi_enable),
+        .spi_write_data_i(spi_tx_data),
+        .spi_write_data_bytes_valid_i(3'd1),
         .spi_miso_i(1'b1),
         .spi_mosi_o(),
         .spi_clk_o(),
         .spi_ss_o(),
-        .ready_o()
+        .spi_read_data_o(),
+        .spi_read_data_bytes_valid_o()        
     );
     
     // Generate 50 MHz clock
@@ -40,11 +40,10 @@ module TB_SPImaster();
         
         #50 HRESETn = 1'b0;
         #200 HRESETn = 1'b1;
-        spi_tx_data = 8'b0110_1001;
-        spi_rw = 1'b0;
-        spi_ready_in = 1'b1;
+        spi_tx_data = 32'b0110_1001_0101_1010_0000_1111_1100_0011;
+        spi_enable = 1'b1;
         
-        #900 spi_ready_in = 1'b0;
+        #8000 spi_enable = 1'b0;
     end
 
 endmodule

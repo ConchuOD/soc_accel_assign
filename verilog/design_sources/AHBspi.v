@@ -26,17 +26,19 @@ module AHBspi (
 
     reg [31:0] HADDR_r;
     reg [3:0] HSIZE_r;
-    reg write_r, read_r;    
-    
-    reg[7:0] spi_tx_data_r
-    wire[7:0] spi_rx_data_x;
+    reg write_r, read_r; 
     
     reg[7:0] ctrl_status_r, 
     reg[31:0] spi_ss_r, write_only_r, read_only_r;
 
-    reg[2:0] spi_transactions_required_r, spi_transactions_required_fixed_r, spi_transactions_completed_r;
+    reg[2:0] spi_data_byte_writes_required_r, spi_transactions_required_fixed_r, spi_transactions_completed_r;
     reg[2:0] read_fill_level_bytes_r;
     reg spi_state_r, init_transaction_r;
+
+    reg[7:0] spi_tx_data_r
+    
+    wire spi_clk_en_c;
+    wire[7:0] spi_rx_data_x;
     
     always @(posedge HCLK) begin
         // Address phase
@@ -56,6 +58,8 @@ module AHBspi (
          end
     end
     
+    assign spi_clk_en_c = ~&spi_ss_r;
+    
     //                      CONTROL/STATUS
     // | CPOL | CPHA | SPI_BITRATE | NOT USED | WDATA_FINISHED | RDATA_VALID |
     // |  7   |  6   |     5,4     |   3,2    |       1        |      0      |
@@ -69,15 +73,10 @@ module AHBspi (
             (SPI_SLAVE_SELECT_ADDR): spi_ss_r      <= HWDATA;
             (SPI_WDATA_ADDR):
                 write_only_r <= HWDATA;   
-
-                // Using spi_transactions_required_r like this is not likely to work
-                // as it will be updated potentially two cycles after it is received, while its
-                // original value is needed for much longer than that 
-                 
                 case (HSIZE_r)
-                (3'b000): spi_transactions_required_r <= 3'd1;
-                (3'b001): spi_transactions_required_r <= 3'd2;
-                (3'b010): spi_transactions_required_r <= 3'd4;
+                (3'b000): spi_data_byte_writes_required_r <= 3'd1;
+                (3'b001): spi_data_byte_writes_required_r <= 3'd2;
+                (3'b010): spi_data_byte_writes_required_r <= 3'd4;
                 endcase  
         // AHB read transaction             
         else begin
@@ -91,24 +90,50 @@ module AHBspi (
             ctrl_status_r               <= 8'd0;
             spi_ss_r                    <= 32'd0;
             write_only_r                <= 32'd0;
-            spi_transactions_required_r <= 1'b0;
+            spi_data_byte_writes_required_r <= 1'b0;
         end
     end
     
     always @(posedge HCLK) begin
         case (spi_state_r)
-        IDLE: 
-            if(spi_ready_x && spi_transactions_required_r > 3'd0) begin
+        IDLE : begin
+            if(spi_data_byte_writes_required_r > 3'd0 && spi_clk_en_c) begin
+                // Write all the bytes, then continue to write with meaningless
+                // values until slave select goes low
+                spi_state_r              <= TRANSACT;
+                spi_tx_data_r            <= write_only_r;
+                spi_tx_bytes_valid_r     <= spi_data_byte_writes_required_r;
+                spi_init_transactions_r  <= 1'b1;  
+                //spi_tx_byte_r                          <= write_only_r[8*(spi_transactions_completed_r + 1) - 1:8*(spi_transactions_completed_r)];
+                /*
                 spi_state_r                            <= TRANSACT;
-                init_transaction_r                     <= 1'b1;   
-                spi_tx_data_r                          <= write_only_r[8*(spi_transactions_completed_r + 1) - 1:8*(spi_transactions_completed_r)];
-                spi_transactions_completed_r           <= spi_transactions_completed_r + 3'd1;
+                spi_init_transactions_r                     <= 1'b1;  
+
+                // Load 32 bits of data into SPI master, and indicate how many are valid
+                spi_tx_bytes_valid_r                   <= spi_data_byte_writes_required_r;
+                spi_tx_byte_r                          <= write_only_r[8*(spi_transactions_completed_r + 1) - 1:8*(spi_transactions_completed_r)];
+                
+                //spi_transactions_completed_r           <= spi_transactions_completed_r + 3'd1;
                 
                 // Copy the value of transactions required
-                spi_transactions_required_fixed_r      <= spi_transactions_required_r;                
+                //spi_transactions_required_fixed_r      <= spi_data_byte_writes_required_r;                
+                
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // The data requested to be written has not been written yet
+                */
             end
-        TRANSACT: 
+        end        
+        TRANSACT : begin
+            // Need to check if 
+            // - 4 bytes have been written (data or meaningless), so we can get them into a register
+            //   readable by AHB reads
+            // - what the fill level of the read buffer is? No
+            
+            // spi master pushes its buffer contents out into ahb spi register when it has filled up, 
+            // or spi slave select goes high
+            
+            
+            
+            /*
             init_transaction_r <= 1'b0;
             
             if(spi_ready_x && ~init_transaction_r) begin
@@ -131,6 +156,8 @@ module AHBspi (
                     ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b1; // The data requested to be written has been written
                 end
             end
+            */
+        end
         endcase
         if(~HRESETn) begin
             spi_state_r                       <= IDLE;
@@ -144,10 +171,12 @@ module AHBspi (
         .clk_i(HCLK),
         .rstn_i(HRESETn),
         .ready_i(init_transaction_r),
+        .spi_tx_bytes_valid_i(spi_tx_bytes_valid_r),
         .spi_tx_data_i(spi_tx_data_r),
         .spi_rx_data_o(spi_rx_data_x),
         .spi_miso_i(SPI_MISO_i),
         .spi_mosi_o(SPI_MOSI_o),
+        .spi_clk_en_i(spi_clk_en_c),
         .spi_clk_o(SPI_CLK_o),
         .spi_ss_o(SPI_SS_o),
         .ready_o(spi_ready_x)
