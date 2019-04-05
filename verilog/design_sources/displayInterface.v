@@ -69,7 +69,7 @@ module DisplayInterface (
         endcase
     end
     //converts 4 bit input hex into 7 bit segment information
-    hex2seg hexSeg (
+    BcdToSeg bcdSeg (
         .number(rawSeg), 
         .pattern(segSeven)
     );

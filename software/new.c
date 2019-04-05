@@ -18,9 +18,13 @@
 #define DISPLAY_WRITE_COMMAND   0x01
 #define DISPLAY_ENABLE_REG      0x00
 #define DISPLAY_ENABLE_ALL      0xFF
+#define DISPLAY_MINUS           0xA
+#define DISPLAY_BLANK           0xF
 
 #define ADXL_SS_POS             0
 #define DISPLAY_SS_POS          1
+
+#define DISPLAY_DIGITS_PER_VAR  4
 
 #define adxl_send_junk_byte()   adxl_send_byte(0xFF)
 
@@ -65,11 +69,13 @@ void adxl_send_byte(uint8_t data_to_send);
 void adxl_send_half_word(uint16_t data_to_send);
 uint8_t adxl_read_status(void);
 void adxl_init(void);
+uint16_t * adxl_convert_bcd(uint32_t data_to_convert);
 
 //Display
 void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write);
 void display_enable_all_digits(void);
-
+void display_value_to_digits(uint32_t value_to_display, uint8_t * digits, const uint8_t num_digits);
+void display_send_value(uint8_t digit_offset, uint32_t value_to_display);
 
 //SPI
 void spi_send_byte(uint8_t);
@@ -93,12 +99,15 @@ void wait_n_loops(uint32_t n) {
 // Main Function
 //////////////////////////////////////////////////////////////////
 int main(void) {
-    uint8_t  adxl_x_ls8;
-    uint16_t adxl_x_data;
-    uint16_t adxl_y_data;
-    uint16_t adxl_z_data;
-    uint32_t first_adxl_word;
-    uint32_t second_adxl_word;
+    uint8_t    adxl_x_ls8;
+    uint16_t   adxl_x_data;
+    uint16_t   adxl_y_data;
+    uint16_t   adxl_z_data;
+    uint32_t   first_adxl_word;
+    uint32_t   second_adxl_word;
+    uint8_t *  bcd_x_data;
+    uint8_t *  bcd_y_data;
+    uint8_t *  bcd_z_data;
     
     
     uint8_t i;
@@ -133,10 +142,14 @@ int main(void) {
             spi_clear_ss();
             second_adxl_word = spi_read_word();
            
-            adxl_y_data = (uint16_t)( (((second_adxl_word >> 16) & 0xFF) << 8) | ((second_adxl_word >> 24) & 0xFF) );
-            adxl_z_data = (uint16_t)( ((second_adxl_word & 0xFF) << 8) | ((second_adxl_word >> 8) & 0xFF) );    
-            adxl_x_ls8  = (uint8_t)( adxl_x_data & 0x00FF );
+            adxl_y_data = (uint32_t)( (((second_adxl_word >> 16) & 0xFF) << 8) | ((second_adxl_word >> 24) & 0xFF) );
+            adxl_z_data = (uint32_t)( ((second_adxl_word & 0xFF) << 8)         | ((second_adxl_word >> 8) & 0xFF) );    
+            adxl_x_ls8  = (uint8_t)( adxl_x_data & 0xFF );
             display_send_write_data(0x01,adxl_x_ls8);
+            bcd_x_data = value_to_digits(adxl_x_data);
+            bcd_y_data = value_to_digits(adxl_y_data);
+            bcd_z_data = value_to_digits(adxl_z_data);
+            //display_send_value(0x00,adxl_x_data);
         }
     }
 
@@ -270,11 +283,52 @@ void display_enable_all_digits(void)
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();    
 }
+void display_value_to_digits(uint32_t value_to_display, uint8_t * digits, const uint8_t num_digits)
+{
+    uint8_t inc;
+    uint8_t sign;
+    uint32_t magnitude;
+    const uint8_t convert_to_accel = 0xFA;
 
+    sign = (value_to_display >> 12) & 1UL;
+    magnitude = value_to_display & 0x7FF;
+    if (sign)
+    {
+        *(digits+num_digits-1) = DISPLAY_MINUS;
+        magnitude = !magnitude;
+    }
+    else
+    {
+        *(digits+num_digits-1) = DISPLAY_BLANK;
+    }
+    magnitude = ((magnitude << 8) * convert_to_accel) >> 8;
+
+    for(inc=0;inc<num_digits-1;inc++)
+    {
+        *(digits+inc)  = (uint8_t)(magnitude%10);
+        magnitude   = magnitude/10;
+    }
+}
+void display_send_value(uint8_t digit_offset, uint32_t value_to_display)
+{
+    uint8_t inc;
+    uint8_t digits[DISPLAY_DIGITS_PER_VAR];
+    uint8_t address;
+    uint8_t character;
+
+    display_value_to_digits(value_to_display, digits, DISPLAY_DIGITS_PER_VAR);
+
+    for(inc = 0; inc < DISPLAY_DIGITS_PER_VAR; inc++)
+    {
+        address = digit_offset + inc + 1;
+        character = *(digits+inc);
+        display_send_write_data(address, character);
+    }
+}
 //SPI
 void spi_send_byte(uint8_t byte_to_send)
 {
-    ;
+    ;//TODO
 }
 uint32_t spi_read_word(void)
 {
