@@ -2,12 +2,12 @@
 #ifndef DES_M0_SoC_ALREADY_INCLUDED
 #define DES_M0_SoC_ALREADY_INCLUDED
 
-typedef unsigned       char uint8;
-typedef   signed       char  int8;
-typedef unsigned short int  uint16;
-typedef   signed short int   int16;
-typedef unsigned       int  uint32;
-typedef   signed       int   int32;
+typedef unsigned       char uint8_t;
+typedef   signed       char  int8_t;
+typedef unsigned short int  uint16_t;
+typedef   signed short int   int16_t;
+typedef unsigned       int  uint32_t;
+typedef   signed       int   int32_t;
 
 #define bit_read(value, bit) (((value) >> (bit)) & 0x01)
 #define bit_set(value, bit) ((value) |= (1UL << (bit)))
@@ -17,20 +17,20 @@ typedef   signed       int   int32;
 #pragma anon_unions
 typedef struct {
 	union {
-		volatile uint8   RxData;
-		volatile uint32  reserved0;
+		volatile uint8_t   RxData;
+		volatile uint32_t  reserved0;
 	};
 	union {
-		volatile uint8   TxData;
-		volatile uint32  reserved1;
+		volatile uint8_t   TxData;
+		volatile uint32_t  reserved1;
 	};
 	union {
-		volatile uint8   Status;
-		volatile uint32  reserved2;
+		volatile uint8_t   Status;
+		volatile uint32_t  reserved2;
 	};
 	union {
-		volatile uint8   Control;
-		volatile uint32  reserved3;
+		volatile uint8_t   Control;
+		volatile uint32_t  reserved3;
 	};
 } UART_t;
 // bit position defs for the UART status register
@@ -47,13 +47,13 @@ typedef struct {
 
 typedef struct {
 	union {
-		volatile uint32	Enable;
-		volatile uint32	reserved0;
+		volatile uint32_t	Enable;
+		volatile uint32_t	reserved0;
 	};
-	volatile uint32		reserved1[0x20-1];  // force next guy to to 0x80 bytes = 0x20 words away from start of this one
+	volatile uint32_t		reserved1[0x20-1];  // force next guy to to 0x80 bytes = 0x20 words away from start of this one
 	union {
-		volatile uint32	Disable;
-		volatile uint32	reserved2;
+		volatile uint32_t	Disable;
+		volatile uint32_t	reserved2;
 	};
 } NVIC_t;
 #define NVIC_UART_BIT_POS		1      // bit position of UART in ARM's interrupt control register
@@ -62,39 +62,39 @@ typedef struct {
 
 typedef struct {
 	union {
-		volatile uint16  LED;
-		volatile uint32  reserved0;
+		volatile uint16_t  LED;
+		volatile uint32_t  reserved0;
 	};
 	union {
-		volatile uint16  NotConnected;
-		volatile uint32  reserved1;
+		volatile uint16_t  NotConnected;
+		volatile uint32_t  reserved1;
 	};
 	union {
-		volatile uint16  Switches;
-		volatile uint32  reserved2;
+		volatile uint16_t  Switches;
+		volatile uint32_t  reserved2;
 	};
 	union {
-		volatile uint16  Buttons;
-		volatile uint32  reserved3;
+		volatile uint16_t  Buttons;
+		volatile uint32_t  reserved3;
 	};
 } GPIO_t;
 
 typedef struct
 {
-	volatile uint32 control;
-	volatile uint32 slave_select;
+	volatile uint32_t control;
+	volatile uint32_t slave_select;
     union
     {
-		volatile uint16  write;
-		volatile uint32  reserved2;
+		volatile uint16_t  write;
+		volatile uint32_t  reserved2;
 	};
-	volatile uint32 read;
+	volatile uint32_t read;
 } SPI_t;
 
 #define SPI_DATA_READY_BIT 		  0
 #define SPI_TRANSMIT_COMPLETE_BIT 1
-#define SPI_WRITE_COMPLETE      bit_read(pt2SPI->control, SPI_TRANSMIT_COMPLETE_BIT)
-#define SPI_DATA_READY          bit_read(pt2SPI->control, SPI_DATA_READY_BIT)
+#define SPI_WRITE_COMPLETE        bit_read(pt2SPI->control, SPI_TRANSMIT_COMPLETE_BIT)
+#define SPI_DATA_READY            bit_read(pt2SPI->control, SPI_DATA_READY_BIT)
 
 // use above typedefs to define the memory map.
 #define pt2NVIC ((NVIC_t *)0xE000E100)

@@ -61,10 +61,10 @@
 //----------------------------------------------------------------------------
 // __primary_________100.000____________0.010
 
-module clock_gen_50_5 (
+module clock_gen_50M_6M25 (
     input         clk_in1,      // 100 MHz input clock
     output        clk_out1,     // 50 MHz output clock
-    output        clk_5_out,    // 6.25 Mhz output clock
+    output        clk_6M25_out,    // 6.25 Mhz output clock
     output        locked        // PLL lock indicator
     );
 
@@ -158,7 +158,7 @@ module clock_gen_50_5 (
     );
 
   BUFG clkout1_buf (
-    .O   (clk_5_out),
+    .O   (clk_6M25_out),
     .I   (clk_out1_clk_wiz_1)
     );
 

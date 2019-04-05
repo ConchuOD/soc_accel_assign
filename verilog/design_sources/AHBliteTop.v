@@ -14,25 +14,27 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 module AHBliteTop (
-    input         clk,         // input clock from 100 MHz oscillator on Nexys4 board
-    input         btnCpuReset, // reset pushbutton, active low (CPU RESET)
-    input         btnU,        // up button - if pressed after reset, ROM loader activated
-    input         btnD,        // down button
-    input         btnL,        // left button
-    input         btnC,        // centre button
-    input         btnR,        // right button
-    input         aclMOSI,     //
-    input         aclSCK,      //
-    input         aclSS,       //
-    input         aclInt1,     //
-    input         aclInt2,     //
-    input         RsRx,        // serial port receive line
-    input  [15:0] sw,          // 16 slide switches on Nexys 4 board
-    output [15:0] led,         // 16 individual LEDs above slide switches   
-    output [5:0]  rgbLED,      // multi-colour LEDs - {blu2, grn2, red2, blu1, grn1, red1} 
-    output [7:0]  JA,          // monitoring connector on FPGA board - use with oscilloscope
-    output        RsTx         // serial port transmit line
-    output        aclMISO,     //
+        input         clk,         // input clock from 100 MHz oscillator on Nexys4 board
+        input         btnCpuReset, // reset pushbutton, active low (CPU RESET)
+        input         btnU,        // up button - if pressed after reset, ROM loader activated
+        input         btnD,        // down button
+        input         btnL,        // left button
+        input         btnC,        // centre button
+        input         btnR,        // right button
+        input         aclMOSI,     //
+        input         aclSCK,      //
+        input         aclSS,       //
+        input         aclInt1,     //
+        input         aclInt2,     //
+        input         RsRx,        // serial port receive line
+        input  [15:0] sw,          // 16 slide switches on Nexys 4 board
+        output [15:0] led,         // 16 individual LEDs above slide switches   
+        output [5:0]  rgbLED,      // multi-colour LEDs - {blu2, grn2, red2, blu1, grn1, red1} 
+        output [7:0]  JA,          // monitoring connector on FPGA board - use with oscilloscope
+        output        RsTx,         // serial port transmit line
+        output        aclMISO,     //
+        output [7:0]  segment_o,
+        output [7:0]  digit_o
     );
  
   localparam  BAD_DATA = 32'hdeadbeef;
@@ -59,11 +61,16 @@ module AHBliteTop (
     
 // ========================= Signals to-from individual slaves ==================
 // Slave select signals (one per slave)
-    wire        HSEL_rom, HSEL_ram, HSEL_gpio, HSEL_uart;
+    wire        HSEL_rom, HSEL_ram, HSEL_gpio, HSEL_uart, HSEL_spi;
 // Slave output signals (one per slave)
-    wire [31:0] HRDATA_rom, HRDATA_ram, HRDATA_gpio, HRDATA_uart;
-    wire        HREADYOUT_rom, HREADYOUT_ram, HREADYOUT_gpio, HREADYOUT_uart;
+    wire [31:0] HRDATA_rom, HRDATA_ram, HRDATA_gpio, HRDATA_uart, HRDATA_spi;
+    wire        HREADYOUT_rom, HREADYOUT_ram, HREADYOUT_gpio, HREADYOUT_uart, HREADYOUT_spi;
  
+// =================================== SPI ======================================
+    wire        display_clock_x;
+    wire        spi_ss_display_x = 1'd1;
+    wire        spi_clk_x        = 1'd1;
+    wire        spi_data_x       = 1'd1;
 
 // ======================== Other Interconnecting Signals =======================
     wire        PLL_locked;     // from clock generator, indicates clock is running
@@ -99,9 +106,10 @@ module AHBliteTop (
 // ======================== Clock Generator ======================================
 // Generates 50 MHz bus clock from 100 MHz input clock
 // Instantiate clock management module
-    clock_gen clockGen (
+    clock_gen_50M_6M25 clockGen (
         .clk_in1(clk),        // 100 MHz input clock
         .clk_out1(HCLK),      // 50 MHz output clock for AHB and other hardware
+        .clk_6M25_out(display_clock_x),
         .locked(PLL_locked)   // locked indicator
         );
 
@@ -294,5 +302,17 @@ module AHBliteTop (
           .serialTx(RsTx),
           .uart_IRQ(uart_IRQ)
   );
+
+  // ======================== DISP ======================================
+  Nexys4Display nexys4Display (
+        .rst_low_i(HRESETn),
+        .block_clk_i(display_clock_x),
+        .spi_sclk_i(clk_spi_x),   //idle high, posedge active, < block_clk_i
+        .spi_ss_i(spi_ss_display),     //idle high
+        .spi_mosi_i(spi_data),   //idle high
+        .spi_miso_o(),   //idle high
+        .segment_o(segment_o), 
+        .digit_o(digit_o)
+    );
 
 endmodule
