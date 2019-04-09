@@ -9,13 +9,13 @@ module SPIShiftReg
     // - have an idle high SPI_clk
 )
 (   
-    input  wire       clk_i,
-    input  wire       rstn_i,
-    input  wire       data_bit_i,
-    input  wire [7:0] data_byte_i,
+    input             clk_i,
+    input             rstn_i,
+    input             data_bit_i,
+    input       [7:0] data_byte_i,
     output wire [7:0] data_byte_o,
-    input  wire       load_byte_en_i,
-    input  wire       load_bit_en_i,
+    input             load_byte_en_i,
+    input             load_bit_en_i,
     output wire       shift_out_o
 ); 
 
