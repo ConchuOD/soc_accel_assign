@@ -85,6 +85,20 @@ module SPIMasterControl(
             
             bit_count_r <= bit_count_r + 4'd1;
             
+            // Quit straight away if we would over
+            if(~enable_i && read_fill_level_bytes_r == 3'd4) begin
+                ctrl_state_r                <= IDLE;
+                read_data_r                 <= 32'b0;
+                bit_count_r                 <= 4'd0;
+                byte_count_r                <= 3'd0;
+                read_fill_level_bytes_r     <= 3'd0;
+                read_fill_level_bytes_out_r <= 3'd0;
+                clear_shift_reg_o           <= 1'b1;
+                new_byte_r                  <= 1'b0;
+                loading_r                   <= 1'b0;
+                shifting_r                  <= 1'b0;
+            end
+            
             if(bit_count_r == 4'd7) begin 
                 bit_count_r             <= 4'd0;
                 read_fill_level_bytes_r <= (read_fill_level_bytes_r % 3'd4) + 3'd1;

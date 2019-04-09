@@ -16,6 +16,16 @@ module TB_AHBspi ();
     wire [31:0] HRDATA;     // read data from slave
     wire HREADY;            // ready signal - from slave, also to slave
 	 
+    wire SPI_mosi_x;
+    wire SPI_miso_x;
+    wire[31:0] SPI_ss_x;
+    wire SPI_clk_x;
+    
+    reg block_clk;
+    wire SPI_ss_disp_c;
+    
+    
+    assign SPI_ss_disp_c = SPI_ss_x[0];
 
     AHBspi dut(
         .HCLK(HCLK),
@@ -29,11 +39,22 @@ module TB_AHBspi ();
         .HWDATA(HWDATA),
         .HRDATA(HRDATA),
         .HREADYOUT(HREADY),    
-        .SPI_MISO_i(1'b1),
-        .SPI_MOSI_o(),
-        .SPI_SS_o(),
-        .SPI_CLK_o()
+        .SPI_MISO_i(SPI_miso_x),
+        .SPI_MOSI_o(SPI_mosi_x),
+        .SPI_SS_o(SPI_ss_x),
+        .SPI_CLK_o(SPI_clk_x)
         );
+        
+    Nexys4Display dispTest(
+        .rst_low_i(HRESETn),
+        .block_clk_i(block_clk),
+        .spi_sclk_i(SPI_clk_x),   //id
+        .spi_ss_i(SPI_ss_disp_c),   // Display is slave index 0
+        .spi_mosi_i(SPI_mosi_x),  //id
+        .spi_miso_o(SPI_miso_x),  //id
+        .segment_o(),
+        .digit_o()
+    );
 
     initial
     begin
@@ -46,24 +67,40 @@ module TB_AHBspi ();
     
     initial
     begin
+        block_clk = 1'b0;
+        forever	// generate 5 MHz clock for display
+        begin
+          #100 block_clk = ~block_clk;
+        end
+    end
+    
+    initial
+    begin
         HRESETn = 1'b1;
         #20 HRESETn = 1'b0;
         #20 HRESETn = 1'b1;
         #50;
         
-        // Initiate SPI write
         // Set SPI slave select all disabled except last (active low)
+        // to select the display
         AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FE);
-        // Set data to be written
-        AHBwrite(WORD, 32'h8, 32'hFF_FF_FF_FF);
-        // Read the control register - don't care what's in it
-        AHBread(WORD, 32'h0, 32'h0);
-		AHBidle;
-        #8000
-        // Set SPI slave select all disabled to finish transaction
+        // Write two bytes to the display
+        AHBwrite(HALF, 32'h8, 32'h00_00_FF_11);
+        
+        // Wait until the intended number of bytes have been
+        // written by SPI to the display
+        while(~receivedData[4]) begin            
+            AHBread(WORD, 32'h0, 32'h0);
+            AHBidle;
+            #100;
+        end
+        
+        // Once the two bytes have been written, disable
+        // the display slave select
         AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FF);
         AHBidle;
-        #300
+        #300;        
+        
         HSELx = 1'b0;
     end
     
@@ -72,6 +109,8 @@ module TB_AHBspi ();
     reg [31:0] expectRdata = 32'h0; // expected read data for read transactions
     reg [31:0] rExpectRead;         // store expected read data
     reg checkRead; 
+    reg error = 1'b0;  // read error signal - asserted for one cycle AFTER read completes
+    reg[31:0] receivedData = 32'd0;
     
     task AHBwrite;        // simulates write transaction on AHB Lite
         input [2:0] size;   // transaction width - BYTE, HALF or WORD
@@ -137,5 +176,12 @@ module TB_AHBspi ();
 		else if (HREADY) // some other transaction moving to data phase
             checkRead <= 1'b0;		//  no need to check
 
+    always @ (posedge HCLK)
+		if (checkRead & HREADY)	begin// read transaction completing
+				error = (HRDATA != rExpectRead);	// read transaction completing
+                receivedData = HRDATA;
+        end
+        else error = 1'b0;	// error will be asserted for one cycle AFTER problem detected
+     
 
 endmodule

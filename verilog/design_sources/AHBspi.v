@@ -1,19 +1,19 @@
 `timescale 1ns / 1ps
 
 module AHBspi (
-        input  wire        HCLK,
-        input  wire        HRESETn,
-        input  wire        HSEL,
-        input  wire        HREADY,          // Indicates previous AHB transaction completing
-        input  wire [31:0] HADDR,
-        input  wire        HWRITE,
-        input  wire [2:0]  HSIZE,
-        input  wire [1:0]  HTRANS,
-        input  wire [31:0] HWDATA,
+        input              HCLK,
+        input              HRESETn,
+        input              HSEL,
+        input              HREADY,          // Indicates previous AHB transaction completing
+        input       [31:0] HADDR,
+        input              HWRITE,
+        input       [2:0]  HSIZE,
+        input       [1:0]  HTRANS,
+        input       [31:0] HWDATA,
         output reg  [31:0] HRDATA,
         output wire        HREADYOUT,
         // SPI
-        input  wire        SPI_MISO_i,
+        input              SPI_MISO_i,
         output wire        SPI_MOSI_o,
         output wire [31:0] SPI_SS_o,
         output wire        SPI_CLK_o
@@ -22,7 +22,7 @@ module AHBspi (
     localparam [3:0] CONTROL_STATUS_ADDR=4'b0000, SPI_SLAVE_SELECT_ADDR=4'b0100, SPI_WDATA_ADDR=4'b1000, SPI_RDATA_ADDR=4'b1100; 
     localparam [7:0] CONTROL_STATUS_REG_BITMASK = 8'hF0; 
     localparam [2:0] BYTE = 3'b000, HALF = 3'b001, WORD = 3'b010;
-    localparam CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 3;
+    localparam CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4;
     
     localparam IDLE = 1'b0, TRANSACT = 1'b1;
 
