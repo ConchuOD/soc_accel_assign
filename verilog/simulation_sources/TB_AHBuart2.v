@@ -36,7 +36,7 @@ module TB_AHBuart2(    );
 		.serialRx(serialRx),
 		.serialTx(serialTx),
 		.uart_IRQ(uart_IRQ)
-         );
+        );
     
     initial
     begin

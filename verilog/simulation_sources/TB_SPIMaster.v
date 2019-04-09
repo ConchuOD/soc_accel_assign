@@ -17,7 +17,7 @@ module TB_SPImaster();
         .rstn_i(HRESETn),
         .enable_i(spi_enable),
         .spi_write_data_i(spi_tx_data),
-        .spi_write_data_bytes_valid_i(3'd1),
+        .spi_write_data_bytes_valid_i(3'd2),
         .spi_miso_i(1'b1),
         .spi_mosi_o(),
         .spi_clk_o(),

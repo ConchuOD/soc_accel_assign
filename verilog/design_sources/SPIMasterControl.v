@@ -12,8 +12,9 @@ module SPIMasterControl(
     output wire        load_clk_o,   
     output wire        spi_clk_o,
     output wire [31:0] read_data_o,
-    output wire [ 2:0] read_data_bytes_valid_o
-    // Need a signal to indicate the transaction bit length
+    output wire [ 2:0] read_data_bytes_valid_o,
+    output reg         clear_shift_reg_o
+    // Need a signal to indicate the transaction bit length?
     // Need parameter to indicate SPI clock idle value
 );
 
@@ -57,7 +58,8 @@ module SPIMasterControl(
         end
     end
     
-    always @(negedge spi_clk_waiting_r) begin        
+    always @(negedge spi_clk_waiting_r) begin 
+        clear_shift_reg_o   <= 1'b0;    // Only ever hold the clear signal high for 1 clock cycle
         case (ctrl_state_r)
         IDLE : begin
             if(enable_i) begin
@@ -65,7 +67,8 @@ module SPIMasterControl(
                 // Load in word                
                 write_data_r          <= write_data_i;
                 loading_r             <= 1'b1;
-                shift_reg_byte_o      <= write_data_i[7:0];                
+                shift_reg_byte_o      <= write_data_i[7:0];
+                byte_count_r          <= 3'd1;
             end
         end
         
@@ -73,7 +76,7 @@ module SPIMasterControl(
             loading_r   <= 1'b0;
             shifting_r  <= 1'b1;  
 
-            if(byte_count_r <= write_data_bytes_valid_i) begin
+            if(byte_count_r < write_data_bytes_valid_i) begin
                 shift_reg_bit_o <= write_data_r[8*(byte_count_r) + bit_count_r];
             end
             else begin
@@ -85,7 +88,7 @@ module SPIMasterControl(
             if(bit_count_r == 4'd7) begin 
                 bit_count_r             <= 4'd0;
                 read_fill_level_bytes_r <= (read_fill_level_bytes_r % 3'd4) + 3'd1;
-                byte_count_r            <= (byte_count_r + 3'd1) % 3'd4;
+                byte_count_r            <= (byte_count_r < write_data_bytes_valid_i) ? byte_count_r + 3'd1 : byte_count_r;
                 new_byte_r              <= 1'b1;
                 
                 // Only terminate on a byte boundary
@@ -96,6 +99,7 @@ module SPIMasterControl(
                     byte_count_r                <= 3'd0;
                     read_fill_level_bytes_r     <= 3'd0;
                     read_fill_level_bytes_out_r <= 3'd0;
+                    clear_shift_reg_o           <= 1'b1;
                     new_byte_r                  <= 1'b0;
                     loading_r                   <= 1'b0;
                     shifting_r                  <= 1'b0;
@@ -119,6 +123,7 @@ module SPIMasterControl(
             byte_count_r                <= 3'd0;
             read_fill_level_bytes_r     <= 3'd0;
             read_fill_level_bytes_out_r <= 3'd0;
+            clear_shift_reg_o           <= 1'b0;
             new_byte_r                  <= 1'b0;
             loading_r                   <= 1'b0;
             shifting_r                  <= 1'b0;

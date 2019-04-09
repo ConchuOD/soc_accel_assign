@@ -13,7 +13,10 @@ module SPIMaster (
 );
 
     wire[7:0] spi_rx_data_x, shift_reg_byte_x;
-    wire load_shift_reg_byte_x, load_shift_reg_bit_x;
+    wire load_shift_reg_byte_x, load_shift_reg_bit_x, clear_shift_reg_x;
+    
+    // Wire enable directly to slave select - might change this
+    assign spi_ss_o = enable_i;
     
     SPIShiftReg #(
         .RWn(1)
@@ -21,7 +24,7 @@ module SPIMaster (
     spiReadShiftReg
     (
         .clk_i(load_clk_x),
-        .rstn_i(rstn_i),
+        .rstn_i(rstn_i | (~clear_shift_reg_x)), // TODO: is it bad practise to have a soft reset?
         .data_bit_i(spi_miso_i),
         .data_byte_i(8'd0),
         .data_byte_o(spi_rx_data_x),
@@ -35,8 +38,8 @@ module SPIMaster (
     )
     spiWriteShiftReg (
         .clk_i(load_clk_x),
-        .rstn_i(rstn_i),
-        .data_bit_i(1'b0),
+        .rstn_i(rstn_i | (~clear_shift_reg_x)), // TODO: is it bad practise to have a soft reset?
+        .data_bit_i(shift_reg_bit_x),
         .data_byte_i(shift_reg_byte_x),
         .data_byte_o(),
         .load_byte_en_i(load_shift_reg_byte_x),
@@ -44,7 +47,6 @@ module SPIMaster (
         .shift_out_o(spi_mosi_o)
     );
     
-    // Tells shift register whether reading or writing
     SPIMasterControl spiMasterControl(
         .clk_i(clk_i),
         .rstn_i(rstn_i),
@@ -58,8 +60,9 @@ module SPIMaster (
         .shift_reg_bit_o(shift_reg_bit_x),
         .load_clk_o(load_clk_x),
         .spi_clk_o(spi_clk_o),              
-        .read_data_o(read_data_o),
-        .read_data_bytes_valid_o(read_data_bytes_valid_o)        
+        .read_data_o(spi_read_data_o),
+        .read_data_bytes_valid_o(spi_read_data_bytes_valid_o),
+        .clear_shift_reg_o(clear_shift_reg_x)
     );
 
 endmodule
