@@ -49,7 +49,7 @@ module TB_AHBspi ();
         .rst_low_i(HRESETn),
         .block_clk_i(block_clk),
         .spi_sclk_i(SPI_clk_x),   //id
-        .spi_ss_i(SPI_ss_disp_c),   // Display is slave index 0
+        .spi_ss_i(SPI_ss_disp_c), // Display is slave index 0
         .spi_mosi_i(SPI_mosi_x),  //id
         .spi_miso_o(SPI_miso_x),  //id
         .segment_o(),
@@ -85,7 +85,7 @@ module TB_AHBspi ();
         // to select the display
         AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FE);
         // Write two bytes to the display
-        AHBwrite(HALF, 32'h8, 32'h00_00_FF_11);
+        AHBwrite(HALF, 32'h8, 32'h00_00_11_08);
         
         // Wait until the intended number of bytes have been
         // written by SPI to the display

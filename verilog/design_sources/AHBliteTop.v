@@ -21,7 +21,7 @@ module AHBliteTop (
         input         btnL,        // left button
         input         btnC,        // centre button
         input         btnR,        // right button
-        input         aclMOSI,     //
+        input         aclMISO,     //
         input         aclSCK,      //
         input         aclSS,       //
         input         aclInt1,     //
@@ -32,12 +32,13 @@ module AHBliteTop (
         output [5:0]  rgbLED,      // multi-colour LEDs - {blu2, grn2, red2, blu1, grn1, red1} 
         output [7:0]  JA,          // monitoring connector on FPGA board - use with oscilloscope
         output        RsTx,         // serial port transmit line
-        output        aclMISO,     //
+        output        aclMOSI,     //
         output [7:0]  segment_o,
         output [7:0]  digit_o
     );
  
-  localparam  BAD_DATA = 32'hdeadbeef;
+    localparam  BAD_DATA = 32'hdeadbeef;
+    localparam SPI_SS_DISPLAY_INDEX = 1'b0, SPI_SS_ACCEL_INDEX = 1'b1;
 
 // ========================= Signals for monitoring on oscilloscope == 
     assign JA = {6'b0, RsRx, RsTx};   // monitor serial communication
@@ -68,9 +69,25 @@ module AHBliteTop (
  
 // =================================== SPI ======================================
     wire        display_clock_x;
-    wire        spi_ss_display_x = 1'd1;
-    wire        spi_clk_x        = 1'd1;
-    wire        spi_data_x       = 1'd1;
+    wire [31:0] spi_ss_x;
+    wire        spi_ss_display_x = spi_ss_x[SPI_SS_DISPLAY_INDEX];
+    wire        spi_clk_x;
+    wire        spi_mosi_x;
+    wire        spi_miso_x;
+    wire        spi_miso_display_x;
+    
+    assign      aclSCK  = spi_clk_x;
+    assign      aclSS   = spi_ss_x[SPI_SS_ACCEL_INDEX];
+    assign      aclMOSI = spi_mosi_x;
+    
+    always @(spi_ss_x) begin
+        if(spi_ss_display_x) begin
+            spi_miso_x = spi_miso_display_x;
+        end
+        else if(aclSS) begin
+            spi_miso_x = aclMISO;
+        end
+    end    
 
 // ======================== Other Interconnecting Signals =======================
     wire        PLL_locked;     // from clock generator, indicates clock is running
@@ -100,8 +117,6 @@ module AHBliteTop (
     assign gpio_in1 = {10'd0, buttons};   
     
     assign led_gpio = gpio_out0;
-    
-    
  
 // ======================== Clock Generator ======================================
 // Generates 50 MHz bus clock from 100 MHz input clock
@@ -183,7 +198,7 @@ module AHBliteTop (
         .HSEL_S1    (HSEL_ram),
         .HSEL_S2    (HSEL_gpio),
         .HSEL_S3    (HSEL_uart),
-        .HSEL_S4    (),
+        .HSEL_S4    (HSEL_spi),
         .HSEL_S5    (),
         .HSEL_S6    (),
         .HSEL_S7    (),
@@ -204,7 +219,7 @@ module AHBliteTop (
         .HRDATA_S1      (HRDATA_ram),
         .HRDATA_S2      (HRDATA_gpio),
         .HRDATA_S3      (HRDATA_uart),
-        .HRDATA_S4      (BAD_DATA),
+        .HRDATA_S4      (HRDATA_spi),
         .HRDATA_S5      (BAD_DATA),
         .HRDATA_S6      (BAD_DATA),
         .HRDATA_S7      (BAD_DATA),
@@ -217,7 +232,7 @@ module AHBliteTop (
         .HREADYOUT_S1   (HREADYOUT_ram),
         .HREADYOUT_S2   (HREADYOUT_gpio),
         .HREADYOUT_S3   (HREADYOUT_uart),             
-        .HREADYOUT_S4   (1'b1),                 // unused inputs tied to 1
+        .HREADYOUT_S4   (HREADYOUT_spi),                 // unused inputs tied to 1
         .HREADYOUT_S5   (1'b1),
         .HREADYOUT_S6   (1'b1),
         .HREADYOUT_S7   (1'b1),
@@ -302,15 +317,34 @@ module AHBliteTop (
           .serialTx(RsTx),
           .uart_IRQ(uart_IRQ)
   );
-
+  
+  // ======================== SPI ======================================
+  AHBspi SPI(
+        .HCLK(HCLK),
+        .HRESETn(HRESETn),
+        .HSEL(HSEL_spi),
+        .HREADY(HREADY),    
+        .HADDR(HADDR),
+        .HWRITE(HWRITE),
+        .HSIZE(HSIZE),
+        .HTRANS(HTRANS),
+        .HWDATA(HWDATA),
+        .HRDATA(HRDATA_spi),
+        .HREADYOUT(HREADYOUT_spi),    
+        .SPI_MISO_i(SPI_miso_x),
+        .SPI_MOSI_o(SPI_mosi_x),
+        .SPI_SS_o(SPI_ss_x),
+        .SPI_CLK_o(spi_clk_x)
+    );
+  
   // ======================== DISP ======================================
   Nexys4Display nexys4Display (
         .rst_low_i(HRESETn),
         .block_clk_i(display_clock_x),
-        .spi_sclk_i(clk_spi_x),   //idle high, posedge active, < block_clk_i
-        .spi_ss_i(spi_ss_display),     //idle high
-        .spi_mosi_i(spi_data),   //idle high
-        .spi_miso_o(),   //idle high
+        .spi_sclk_i(spi_clk_x),          //idle high, posedge active, < block_clk_i
+        .spi_ss_i(spi_ss_display_x),     //idle high
+        .spi_mosi_i(spi_mosi_x),         //idle high
+        .spi_miso_o(spi_miso_display_x), //idle high
         .segment_o(segment_o), 
         .digit_o(digit_o)
     );

@@ -47,7 +47,7 @@ module SPIMasterControl(
     always @(count_r, rstn_i) begin
         next_count_r          <= count_r + 5'd1;
         
-        if(count_r == 5'd4) begin 
+        if(count_r == 5'd5) begin 
             next_count_r      <= 5'd0; 
             spi_clk_waiting_r <= ~spi_clk_waiting_r;
         end        
@@ -67,8 +67,11 @@ module SPIMasterControl(
                 // Load in word                
                 write_data_r          <= write_data_i;
                 loading_r             <= 1'b1;
-                shift_reg_byte_o      <= write_data_i[7:0];
-                byte_count_r          <= 3'd1;
+                //shift_reg_byte_o      <= write_data_i[7:0];
+                shift_reg_byte_o      <= write_data_i[8*(write_data_bytes_valid_i-3'd1) +: 8];
+                //byte_count_r          <= 3'd1;
+                byte_count_r          <= write_data_bytes_valid_i - 3'd1;
+                bit_count_r           <= 4'd7;
             end
         end
         
@@ -76,17 +79,18 @@ module SPIMasterControl(
             loading_r   <= 1'b0;
             shifting_r  <= 1'b1;  
 
-            if(byte_count_r < write_data_bytes_valid_i) begin
-                shift_reg_bit_o <= write_data_r[8*(byte_count_r) + bit_count_r];
+            //if(byte_count_r < write_data_bytes_valid_i) begin
+            if(byte_count_r > 3'd0) begin
+                shift_reg_bit_o <= write_data_r[8*(byte_count_r-3'd1) + bit_count_r];
             end
             else begin
                 shift_reg_bit_o <= 1'b1;
             end
             
-            bit_count_r <= bit_count_r + 4'd1;
+            bit_count_r <= bit_count_r - 4'd1;
             
             // Quit straight away if we would over
-            if(~enable_i && read_fill_level_bytes_r == 3'd4) begin
+            if(~enable_i) begin // && read_fill_level_bytes_r == 3'd4) begin
                 ctrl_state_r                <= IDLE;
                 read_data_r                 <= 32'b0;
                 bit_count_r                 <= 4'd0;
@@ -99,17 +103,19 @@ module SPIMasterControl(
                 shifting_r                  <= 1'b0;
             end
             
-            if(bit_count_r == 4'd7) begin 
-                bit_count_r             <= 4'd0;
+            //if(bit_count_r == 4'd7) begin 
+            if(bit_count_r == 4'd0) begin 
+                bit_count_r             <= 4'd7;
                 read_fill_level_bytes_r <= (read_fill_level_bytes_r % 3'd4) + 3'd1;
-                byte_count_r            <= (byte_count_r < write_data_bytes_valid_i) ? byte_count_r + 3'd1 : byte_count_r;
+                //byte_count_r            <= (byte_count_r < write_data_bytes_valid_i) ? byte_count_r + 3'd1 : byte_count_r;
+                byte_count_r            <= (byte_count_r > 3'd0) ? byte_count_r - 3'd1 : byte_count_r;
                 new_byte_r              <= 1'b1;
                 
                 // Only terminate on a byte boundary
                 if(~enable_i) begin
                     ctrl_state_r                <= IDLE;
                     read_data_r                 <= 32'b0;
-                    bit_count_r                 <= 4'd0;
+                    bit_count_r                 <= 4'd7;
                     byte_count_r                <= 3'd0;
                     read_fill_level_bytes_r     <= 3'd0;
                     read_fill_level_bytes_out_r <= 3'd0;
@@ -133,7 +139,7 @@ module SPIMasterControl(
         if(~rstn_i) begin
             ctrl_state_r                <= IDLE;
             read_data_r                 <= 32'b0;
-            bit_count_r                 <= 4'd0;
+            bit_count_r                 <= 4'd7;
             byte_count_r                <= 3'd0;
             read_fill_level_bytes_r     <= 3'd0;
             read_fill_level_bytes_out_r <= 3'd0;
