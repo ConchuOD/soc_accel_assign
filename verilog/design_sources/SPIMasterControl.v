@@ -5,6 +5,7 @@ module SPIMasterControl(
     input       [31:0] write_data_i,
     input       [ 7:0] read_data_i,
     input       [ 2:0] write_data_bytes_valid_i,
+    input              reset_fill_level_i,
     output wire        load_shift_reg_byte_o,
     output reg  [ 7:0] shift_reg_byte_o,
     output wire        load_shift_reg_bit_o,
@@ -29,14 +30,27 @@ module SPIMasterControl(
     reg[3:0] bit_count_r;
     reg[2:0] byte_count_r;
     reg[2:0] read_fill_level_bytes_r, read_fill_level_bytes_out_r;
-    reg new_byte_r;    
+    reg new_byte_r; 
+    reg reset_fill_level_r;
+    wire[2:0] read_fill_index_c;
+    wire reset_fill_level_spi_clk_x;
 
+    assign read_fill_index_c       = 3'd4 - read_fill_level_bytes_r;
     assign load_shift_reg_byte_o   = loading_r;
     assign load_shift_reg_bit_o    = shifting_r;
     assign load_clk_o              = spi_clk_waiting_r;
     assign spi_clk_o               = shifting_r ? spi_clk_waiting_r : SPI_CLOCK_IDLE;
     assign read_data_bytes_valid_o = read_fill_level_bytes_out_r;
     assign read_data_o             = read_data_r;
+    
+    
+    scp scp_reset_fill(
+        .src_clk_i(clk_i),
+        .dest_clk_i(spi_clk_waiting_r),
+        .rstn_i(rstn_i),
+        .input_pulse_i(reset_fill_level_i),
+        .output_pulse_o(reset_fill_level_spi_clk_x)        
+    );
     
     always @(posedge clk_i) begin
         count_r <= next_count_r;
@@ -67,9 +81,7 @@ module SPIMasterControl(
                 // Load in word                
                 write_data_r          <= write_data_i;
                 loading_r             <= 1'b1;
-                //shift_reg_byte_o      <= write_data_i[7:0];
                 shift_reg_byte_o      <= write_data_i[8*(write_data_bytes_valid_i-3'd1) +: 8];
-                //byte_count_r          <= 3'd1;
                 byte_count_r          <= write_data_bytes_valid_i - 3'd1;
                 bit_count_r           <= 4'd7;
             end
@@ -79,7 +91,6 @@ module SPIMasterControl(
             loading_r   <= 1'b0;
             shifting_r  <= 1'b1;  
 
-            //if(byte_count_r < write_data_bytes_valid_i) begin
             if(byte_count_r > 3'd0) begin
                 shift_reg_bit_o <= write_data_r[8*(byte_count_r-3'd1) + bit_count_r];
             end
@@ -90,7 +101,7 @@ module SPIMasterControl(
             bit_count_r <= bit_count_r - 4'd1;
             
             // Quit straight away if we would over
-            if(~enable_i) begin // && read_fill_level_bytes_r == 3'd4) begin
+            if(~enable_i) begin 
                 ctrl_state_r                <= IDLE;
                 read_data_r                 <= 32'b0;
                 bit_count_r                 <= 4'd0;
@@ -103,19 +114,29 @@ module SPIMasterControl(
                 shifting_r                  <= 1'b0;
             end
             
-            //if(bit_count_r == 4'd7) begin 
+            if(reset_fill_level_spi_clk_x) begin
+                reset_fill_level_r <= 1'b1;
+            end
+            
             if(bit_count_r == 4'd0) begin 
-                bit_count_r             <= 4'd7;
-                read_fill_level_bytes_r <= (read_fill_level_bytes_r % 3'd4) + 3'd1;
-                //byte_count_r            <= (byte_count_r < write_data_bytes_valid_i) ? byte_count_r + 3'd1 : byte_count_r;
+                bit_count_r             <= 4'd7;                
                 byte_count_r            <= (byte_count_r > 3'd0) ? byte_count_r - 3'd1 : byte_count_r;
                 new_byte_r              <= 1'b1;
+                
+                if(reset_fill_level_spi_clk_x | reset_fill_level_r) begin
+                    read_fill_level_bytes_r <= 3'd1;
+                    reset_fill_level_r      <= 1'b0;
+                end
+                else begin
+                    read_fill_level_bytes_r <= (read_fill_level_bytes_r % 3'd4) + 3'd1;
+                end                
                 
                 // Only terminate on a byte boundary
                 if(~enable_i) begin
                     ctrl_state_r                <= IDLE;
                     read_data_r                 <= 32'b0;
                     bit_count_r                 <= 4'd7;
+                    reset_fill_level_r          <= 1'b0;
                     byte_count_r                <= 3'd0;
                     read_fill_level_bytes_r     <= 3'd0;
                     read_fill_level_bytes_out_r <= 3'd0;
@@ -129,7 +150,7 @@ module SPIMasterControl(
             // Capture the read bytes from the read shift register
             // on the negedge clock AFTER the 8th bit has been written
             if(new_byte_r) begin
-                read_data_r[8*(read_fill_level_bytes_r - 3'd1) +: 8] <= read_data_i;
+                read_data_r[8*read_fill_index_c +: 8] <= read_data_i;
                 read_fill_level_bytes_out_r <= read_fill_level_bytes_r;
                 new_byte_r <= 1'b0;
             end
@@ -143,6 +164,7 @@ module SPIMasterControl(
             byte_count_r                <= 3'd0;
             read_fill_level_bytes_r     <= 3'd0;
             read_fill_level_bytes_out_r <= 3'd0;
+            reset_fill_level_r          <= 1'b0;
             clear_shift_reg_o           <= 1'b0;
             new_byte_r                  <= 1'b0;
             loading_r                   <= 1'b0;

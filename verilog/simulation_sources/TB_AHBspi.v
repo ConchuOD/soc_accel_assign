@@ -22,6 +22,7 @@ module TB_AHBspi ();
     wire SPI_clk_x;
     
     reg block_clk;
+    reg[31:0] receivedData = 32'd0;
     wire SPI_ss_disp_c;
     
     
@@ -51,7 +52,7 @@ module TB_AHBspi ();
         .spi_sclk_i(SPI_clk_x),   //id
         .spi_ss_i(SPI_ss_disp_c), // Display is slave index 0
         .spi_mosi_i(SPI_mosi_x),  //id
-        .spi_miso_o(SPI_miso_x),  //id
+        .spi_miso_o(),  //id
         .segment_o(),
         .digit_o()
     );
@@ -81,36 +82,79 @@ module TB_AHBspi ();
         #20 HRESETn = 1'b1;
         #50;
         
+        // Set number of valid bytes in WDATA to 2
+        AHBwrite(WORD, 32'h0, 32'h00_00_00_40);
         // Set SPI slave select all disabled except last (active low)
         // to select the display
         AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FE);
         // Write two bytes to the display
         AHBwrite(HALF, 32'h8, 32'h00_00_11_08);
+        AHBidle;
         
-        // Wait until the intended number of bytes have been
-        // written by SPI to the display
-        while(~receivedData[4]) begin            
+        // Read the control/status register until we have written
+        // down the two bytes
+        while(~HRDATA[4]) begin             
             AHBread(WORD, 32'h0, 32'h0);
             AHBidle;
             #100;
         end
         
+        // Two bytes have been written, read the read_data to 
+        // reset the write flag and read flag
+        AHBread(WORD, 32'h00_00_00_0C, 32'h0); // Reset read flag
+        AHBidle;
+        #50
+        
+        // Read
+        AHBread(WORD, 32'h0, 32'h0);
+        AHBidle;
+        #100;
+        
+        // Read until buffer fills up with 4 bytes
+        while(~HRDATA[0]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+            AHBidle;
+            #100;
+        end
+        
+        // Invalidate flag
+        AHBread(WORD, 32'h00_00_00_0C, 32'h0); // Reset read flag
+        AHBidle;
+        #50
+        
         // Once the two bytes have been written, disable
         // the display slave select
-        AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FF);
-        AHBidle;
+        //AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FF);
+        //AHBidle;
         #300;        
         
         HSELx = 1'b0;
     end
     
-    // AHB bus tasks
+    wire[63:0] data_test = 64'h01_02_03_04_05_06_07_08;
+    reg[5:0] count_r;    
+    
+    //always @(count_r) begin
+    assign SPI_miso_x = data_test[count_r];
+    //end
+    
+    always @(posedge SPI_clk_x) begin    
+        if(~SPI_ss_x[0]) begin
+            count_r <= count_r - 6'd1;
+        end
+        
+        if(~HRESETn) begin
+            count_r <= 6'd63;
+        end
+    end
+    
+    /////////// AHB bus tasks ////////////
     reg [31:0] nextWdata = 32'h0;   // delayed data for write transactions
     reg [31:0] expectRdata = 32'h0; // expected read data for read transactions
     reg [31:0] rExpectRead;         // store expected read data
     reg checkRead; 
     reg error = 1'b0;  // read error signal - asserted for one cycle AFTER read completes
-    reg[31:0] receivedData = 32'd0;
+    
     
     task AHBwrite;        // simulates write transaction on AHB Lite
         input [2:0] size;   // transaction width - BYTE, HALF or WORD

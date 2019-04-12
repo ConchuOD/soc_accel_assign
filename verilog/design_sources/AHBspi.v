@@ -20,9 +20,9 @@ module AHBspi (
     );
     
     localparam [3:0] CONTROL_STATUS_ADDR=4'b0000, SPI_SLAVE_SELECT_ADDR=4'b0100, SPI_WDATA_ADDR=4'b1000, SPI_RDATA_ADDR=4'b1100; 
-    localparam [7:0] CONTROL_STATUS_REG_BITMASK = 8'hF0; 
+    localparam [15:0] CONTROL_STATUS_REG_BITMASK = 16'hFF_E0; 
     localparam [2:0] BYTE = 3'b000, HALF = 3'b001, WORD = 3'b010;
-    localparam CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4;
+    localparam[2:0] CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4, CS_WDATA_VALID_BYTES_INDEX = 5;
     
     localparam IDLE = 1'b0, TRANSACT = 1'b1;
 
@@ -31,14 +31,20 @@ module AHBspi (
     reg HWRITE_r;
     reg write_r, read_r; 
     
-    reg[7:0] ctrl_status_r; 
+    reg mask_fill_level_r;
+    reg[15:0] ctrl_status_r; 
     reg[31:0] spi_ss_r, write_only_r, read_only_r;
     reg spi_state_r;   
     wire spi_ss_reduce_c;
     reg spi_enable_r;
     wire[31:0] spi_read_data_x;
     
+    reg read_hold_r;
+    reg[2:0] num_bytes_r;
+    
     reg pending_spi_transaction_r;
+    reg reading_data_r;
+    reg reset_fill_level_r;
     
     reg[2:0] spi_data_byte_writes_required_r;
     wire[2:0] spi_read_data_bytes_valid_x;
@@ -64,36 +70,39 @@ module AHBspi (
     end 
     
     //                              CONTROL/STATUS
-    // | CPOL | CPHA | NOT USED | WDATA_FINISHED | RDATA_BYTES_VALID_COUNT | RDATA_READY |
-    // |  7   |  6   |     5    |       4        |           3,2,1         |      0      |
+    // | CPOL  | CPHA | NOT USED | WDATA_VALID_BYTES | WDATA_FINISHED | RDATA_BYTES_VALID_COUNT | RDATA_READY |
+    // |  15   | 14   |   13-8   |       7,6,5       |       4        |           3,2,1         |      0      |
     
     always @(posedge HCLK) begin
         // Data phase   
         pending_spi_transaction_r                         <= 1'b0; // Only goes high for 1 clock cycle
+        reading_data_r                                    <= 1'b0;
         if(write_r) begin
             case (HADDR_r[3:0])
-            (CONTROL_STATUS_ADDR):   ctrl_status_r        <= HWDATA[7:0] & CONTROL_STATUS_REG_BITMASK;                                         
+            (CONTROL_STATUS_ADDR):   ctrl_status_r        <= HWDATA[15:0] & CONTROL_STATUS_REG_BITMASK;                                         
             (SPI_SLAVE_SELECT_ADDR): spi_ss_r             <= HWDATA;
             (SPI_WDATA_ADDR): begin
                 write_only_r                              <= HWDATA;
                 pending_spi_transaction_r                 <= 1'b1;
-                case (HSIZE_r)
-                (BYTE): spi_data_byte_writes_required_r <= 3'd1;
-                (HALF): spi_data_byte_writes_required_r <= 3'd2;
-                (WORD): spi_data_byte_writes_required_r <= 3'd4;                
-                endcase
+                
+                if(ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3] <= 3'd4) begin
+                    spi_data_byte_writes_required_r           <= ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3];               
+                end
+                else begin
+                    spi_data_byte_writes_required_r           <= 3'd0;               
+                end                
             end
             endcase
         end
         else if (read_r) begin
             case (HADDR_r[3:0])            
-            (CONTROL_STATUS_ADDR):   HRDATA              <= ctrl_status_r;
+            (CONTROL_STATUS_ADDR):   HRDATA              <= {16'b0, ctrl_status_r};
             (SPI_SLAVE_SELECT_ADDR): HRDATA              <= spi_ss_r;
             (SPI_WDATA_ADDR):        HRDATA              <= write_only_r;
             (SPI_RDATA_ADDR): begin
-                                     HRDATA              <= read_only_r;
-                ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= 3'd0;       // Read out data has been sent, so it is now stale
-                ctrl_status_r[CS_RDATA_READY_INDEX]      <= 1'b0;       
+                HRDATA                                   <= read_only_r;
+                spi_data_byte_writes_required_r          <= 3'd0;
+                reading_data_r                           <= 1'b1;
             end
             endcase  
         end
@@ -102,51 +111,83 @@ module AHBspi (
             HADDR_r                         <= 32'd0;
             HWRITE_r                        <= 1'b0;
             HRDATA                          <= 32'b0;
-            ctrl_status_r                   <= 8'd0;
             spi_ss_r                        <= 32'hFF_FF_FF_FF;
             write_only_r                    <= 32'd0;
             spi_data_byte_writes_required_r <= 1'b0;
             pending_spi_transaction_r       <= 1'b0;
+            reading_data_r                  <= 1'b0;
         end
     end
     
     always @(posedge HCLK) begin
+        reset_fill_level_r <= 1'b0;
         case (spi_state_r)
         IDLE : begin
-            if(pending_spi_transaction_r && spi_ss_reduce_c) begin
-                // Write all the bytes, then continue to write with meaningless
-                // values until slave select goes low
+            if(pending_spi_transaction_r && spi_ss_reduce_c && spi_data_byte_writes_required_r > 3'd0) begin
                 spi_state_r                            <= TRANSACT;
-                //spi_tx_bytes_valid_r                   <= spi_data_byte_writes_required_r;
                 spi_enable_r                           <= 1'b1; 
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // The data requested to be written has not been written yet                
             end
         end        
         TRANSACT : begin
-            if(spi_read_data_bytes_valid_x == spi_data_byte_writes_required_r) begin
+            // Logic for WDATA_FINIHED flag
+            if(spi_data_byte_writes_required_r == 3'd0) begin
+                ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // Read has occurred, so reset the read flag
+            end
+            else if(spi_read_data_bytes_valid_x == spi_data_byte_writes_required_r) begin
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b1; // Have written down the number of bytes requested to be written
+            end           
+            
+            // Logic for the number of valid bytes
+            if(reading_data_r) begin
+                reset_fill_level_r <= 1'b1;
+                num_bytes_r        <= spi_read_data_bytes_valid_x;
+            end            
+            else if(spi_read_data_bytes_valid_x == num_bytes_r) begin
+                mask_fill_level_r <= 1'b1;
+            end
+            else begin
+                mask_fill_level_r <= 1'b0;
+                num_bytes_r       <= 3'd0;
             end
             
-            if(spi_read_data_bytes_valid_x == 3'd4) begin
-                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'd1;
-            end
-            
-            // Update the amount of valid bytes in the read_only register
+            // Assign as normal
             ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= spi_read_data_bytes_valid_x;
-            read_only_r                                          <= spi_read_data_x;
+            
+            // Logic for RDATA_READY flag
+            if (reset_fill_level_r | mask_fill_level_r) begin
+                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b0;
+                ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= 3'd0;//spi_read_data_bytes_valid_x;
+            end   
+            else if(spi_read_data_bytes_valid_x == 3'd4) begin
+                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b1;
+            end         
+            else begin
+                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b0;                 
+            end
+            
+            read_only_r <= spi_read_data_x;
             
             if(~spi_ss_reduce_c) begin
                 spi_state_r                         <= IDLE;
                 spi_enable_r                        <= 1'b0;
-                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'd1;
+                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'd0;
+                read_hold_r                         <= 1'b0;
+                num_bytes_r                         <= 3'd0;
+                reset_fill_level_r                  <= 1'b0;
+                mask_fill_level_r                   <= 1'b0;
             end
         end        
         endcase
         
         if(~HRESETn) begin
-            spi_state_r  <= IDLE;
-            read_only_r  <= 32'd0;
-            spi_enable_r <= 1'b0;
+            spi_state_r        <= IDLE;
+            read_only_r        <= 32'd0;
+            spi_enable_r       <= 1'b0;
+            ctrl_status_r      <= 16'd0;
+            reset_fill_level_r <= 1'b0;
+            mask_fill_level_r  <= 1'b0;
+            num_bytes_r        <= 3'd0;
         end
     end
     
@@ -156,6 +197,7 @@ module AHBspi (
         .enable_i(spi_enable_r),
         .spi_write_data_i(write_only_r),
         .spi_write_data_bytes_valid_i(spi_data_byte_writes_required_r), // How many bytes did he want to write down?
+        .reset_fill_level_i(reset_fill_level_r),
         .spi_miso_i(SPI_MISO_i),
         .spi_mosi_o(SPI_MOSI_o),
         .spi_clk_o(SPI_CLK_o),
