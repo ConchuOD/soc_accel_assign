@@ -26,7 +26,7 @@ module Nexys4Display (
     reg  [BYTE_WIDTH-1:0] register_digit_r      [NUM_REGISTERS-1:0];
     reg  [BYTE_WIDTH-1:0] register_digit_next_r [NUM_REGISTERS-1:0];
     
-    wire                  spi_rx_clk;
+    wire                  spi_rx_clk_c;
 
     reg  [BYTE_WIDTH-1:0] spi_rx_shiftreg_r;
     wire [BYTE_WIDTH-1:0] spi_rx_shiftreg_next_c;
@@ -51,10 +51,10 @@ module Nexys4Display (
     /* SPI Receiver                                                          */
     /*************************************************************************/
     
-    assign spi_rx_clk = (~spi_ss_i) & spi_sclk_i;
+    assign spi_rx_clk_c = (~spi_ss_i) & spi_sclk_i;
     
     //spi receiver implemented by shift register
-    always @ (posedge spi_sclk_i or negedge rst_low_i)
+    always @ (posedge spi_rx_clk_c or negedge rst_low_i)
     begin
         if (~rst_low_i) spi_rx_shiftreg_r <= 8'd0;
         else            spi_rx_shiftreg_r <= spi_rx_shiftreg_next_c;
@@ -63,7 +63,7 @@ module Nexys4Display (
     assign spi_rx_shiftreg_next_c = {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i}; //assign spi_rx_shiftreg_next_c = ({(BYTE_WIDTH){ (~spi_ss_i) }}) & {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i};
     
     //count the number of bits received
-    always @ (posedge spi_sclk_i or negedge rst_low_i or posedge spi_rx_transfer_complete_r)
+    always @ (posedge spi_rx_clk_c or negedge rst_low_i or posedge spi_rx_transfer_complete_r)
     begin
         if (~rst_low_i | spi_rx_transfer_complete_r) spi_rx_bit_count_r <= 5'd0;
         else             spi_rx_bit_count_r <= spi_rx_bit_count_next_r;
