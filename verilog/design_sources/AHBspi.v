@@ -22,8 +22,9 @@ module AHBspi (
     localparam [3:0] CONTROL_STATUS_ADDR=4'b0000, SPI_SLAVE_SELECT_ADDR=4'b0100, SPI_WDATA_ADDR=4'b1000, SPI_RDATA_ADDR=4'b1100; 
     localparam [15:0] CONTROL_STATUS_REG_BITMASK = 16'hFF_E0; 
     localparam [2:0] BYTE = 3'b000, HALF = 3'b001, WORD = 3'b010;
-    localparam[2:0] CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4, CS_WDATA_VALID_BYTES_INDEX = 5;
-    
+    localparam[2:0] CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4, CS_WDATA_VALID_BYTES_INDEX = 5,
+                    CS_SS_ACTIVE_HIGH = 13;
+                    
     localparam IDLE = 1'b0, TRANSACT = 1'b1;
 
     reg [31:0] HADDR_r;
@@ -34,6 +35,7 @@ module AHBspi (
     reg mask_fill_level_r;
     reg[15:0] ctrl_status_r; 
     reg[31:0] spi_ss_r, write_only_r, read_only_r;
+    wire[31:0] spi_ss_c;
     reg spi_state_r;   
     wire spi_ss_reduce_c;
     reg spi_enable_r;
@@ -42,15 +44,16 @@ module AHBspi (
     reg read_hold_r;
     reg[2:0] num_bytes_r;
     
-    reg pending_spi_transaction_r;
+    reg writing_data_r;
     reg reading_data_r;
     reg reset_fill_level_r;
     
     reg[2:0] spi_data_byte_writes_required_r;
     wire[2:0] spi_read_data_bytes_valid_x;
     
-    assign SPI_SS_o = spi_ss_r;
-    assign spi_ss_reduce_c = ~&spi_ss_r;
+    assign spi_ss_c        = (ctrl_status_r[CS_SS_ACTIVE_HIGH]) ? ~spi_ss_r : spi_ss_r;
+    assign spi_ss_reduce_c = ~&spi_ss_c;
+    assign SPI_SS_o = spi_ss_c;    
     
     always @(posedge HCLK) begin
         // Address phase
@@ -70,12 +73,12 @@ module AHBspi (
     end 
     
     //                              CONTROL/STATUS
-    // | CPOL  | CPHA | NOT USED | WDATA_VALID_BYTES | WDATA_FINISHED | RDATA_BYTES_VALID_COUNT | RDATA_READY |
-    // |  15   | 14   |   13-8   |       7,6,5       |       4        |           3,2,1         |      0      |
+    // | CPOL | CPHA | SPI_SS_ACTIVE_HIGH | NOT USED | WDATA_VALID_BYTES | WDATA_FINISHED | RDATA_BYTES_VALID_COUNT | RDATA_READY |
+    // |  15  |  14  |          13        |   12-8   |       7,6,5       |       4        |           3,2,1         |      0      |
     
     always @(posedge HCLK) begin
         // Data phase   
-        pending_spi_transaction_r                         <= 1'b0; // Only goes high for 1 clock cycle
+        writing_data_r                                    <= 1'b0; // Only goes high for 1 clock cycle
         reading_data_r                                    <= 1'b0;
         if(write_r) begin
             case (HADDR_r[3:0])
@@ -83,7 +86,7 @@ module AHBspi (
             (SPI_SLAVE_SELECT_ADDR): spi_ss_r             <= HWDATA;
             (SPI_WDATA_ADDR): begin
                 write_only_r                              <= HWDATA;
-                pending_spi_transaction_r                 <= 1'b1;
+                writing_data_r                            <= 1'b1;
                 
                 if(ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3] <= 3'd4) begin
                     spi_data_byte_writes_required_r           <= ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3];               
@@ -114,7 +117,7 @@ module AHBspi (
             spi_ss_r                        <= 32'hFF_FF_FF_FF;
             write_only_r                    <= 32'd0;
             spi_data_byte_writes_required_r <= 1'b0;
-            pending_spi_transaction_r       <= 1'b0;
+            writing_data_r                  <= 1'b0;
             reading_data_r                  <= 1'b0;
         end
     end
@@ -123,7 +126,7 @@ module AHBspi (
         reset_fill_level_r <= 1'b0;
         case (spi_state_r)
         IDLE : begin
-            if(pending_spi_transaction_r && spi_ss_reduce_c && spi_data_byte_writes_required_r > 3'd0) begin
+            if(writing_data_r && spi_ss_reduce_c && spi_data_byte_writes_required_r > 3'd0) begin
                 spi_state_r                            <= TRANSACT;
                 spi_enable_r                           <= 1'b1; 
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // The data requested to be written has not been written yet                

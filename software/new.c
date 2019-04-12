@@ -78,6 +78,7 @@ void display_value_to_digits(uint32_t value_to_display, uint8_t * digits, const 
 void display_send_value(uint8_t digit_offset, uint32_t value_to_display);
 
 //SPI
+void spi_init(void);
 void spi_send_byte(uint8_t);
 uint32_t spi_read_word(void);
 void spi_send_half_word(uint16_t half_word_to_send);
@@ -326,6 +327,12 @@ void display_send_value(uint8_t digit_offset, uint32_t value_to_display)
     }
 }
 //SPI
+void spi_init(void)
+{
+    // Set number of valid bytes in WDATA to 2
+    pt2SPI->control = 0x00000040;
+}
+
 void spi_send_byte(uint8_t byte_to_send)
 {
     ;//TODO
