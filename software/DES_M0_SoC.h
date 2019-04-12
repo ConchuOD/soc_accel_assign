@@ -92,7 +92,7 @@ typedef struct
 } SPI_t;
 
 #define SPI_DATA_READY_BIT 		  0
-#define SPI_TRANSMIT_COMPLETE_BIT 1
+#define SPI_TRANSMIT_COMPLETE_BIT 4
 #define SPI_WRITE_COMPLETE        bit_read(pt2SPI->control, SPI_TRANSMIT_COMPLETE_BIT)
 #define SPI_DATA_READY            bit_read(pt2SPI->control, SPI_DATA_READY_BIT)
 

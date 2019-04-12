@@ -21,8 +21,8 @@
 #define DISPLAY_MINUS           0xA
 #define DISPLAY_BLANK           0xF
 
-#define ADXL_SS_POS             0
-#define DISPLAY_SS_POS          1
+#define DISPLAY_SS_POS          0
+#define ADXL_SS_POS             1
 
 #define DISPLAY_DIGITS_PER_VAR  4
 
@@ -109,6 +109,8 @@ int main(void) {
     uint8_t *  bcd_x_data;
     uint8_t *  bcd_y_data;
     uint8_t *  bcd_z_data;
+	
+		uint32_t current_interrupts;
     
     
     uint8_t i;
@@ -116,17 +118,23 @@ int main(void) {
 
     //enable interrupts
     pt2NVIC->Enable  = (1 << NVIC_UART_BIT_POS);    // Enable interrupts for UART in the NVIC
-    pt2NVIC->Enable  = (1 << NVIC_ADXL_BIT_POS);    // Enable interrupts for ADXL in the NVIC
+    
+	
+		pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);   // Enable rx data available interrupt, and no others.
+    wait_n_loops(nLOOPS_per_DELAY);                             // wait a little
+    
+	
+		pt2NVIC->Enable  = pt2NVIC->Enable | (1 << NVIC_ADXL_BIT_POS);    // Enable interrupts for ADXL in the NVIC
+    printf("\r\nConor/Andrew Assignment 3\r\n");                // output welcome message
+	
     //spi setup
+		spi_init();
     //adxl setup
     adxl_init();
     //display setup
     display_enable_all_digits();
 
-    pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);   // Enable rx data available interrupt, and no others.
-    wait_n_loops(nLOOPS_per_DELAY);                             // wait a little
     
-    printf("\r\nConor/Andrew Assignment 3\r\n");                // output welcome message
     
     for(;/*ever*/;)
     {
@@ -147,10 +155,10 @@ int main(void) {
             adxl_z_data = (uint32_t)( ((second_adxl_word & 0xFF) << 8)         | ((second_adxl_word >> 8) & 0xFF) );    
             adxl_x_ls8  = (uint8_t)( adxl_x_data & 0xFF );
             display_send_write_data(0x01,adxl_x_ls8);
-            bcd_x_data = value_to_digits(adxl_x_data);
-            bcd_y_data = value_to_digits(adxl_y_data);
-            bcd_z_data = value_to_digits(adxl_z_data);
-            //display_send_value(0x00,adxl_x_data);
+            //bcd_x_data = display_value_to_digits(adxl_x_data);
+            //bcd_y_data = display_value_to_digits(adxl_y_data);
+            //bcd_z_data = display_value_to_digits(adxl_z_data);
+            display_send_value(0x01,adxl_x_data);
         }
     }
 
@@ -329,8 +337,9 @@ void display_send_value(uint8_t digit_offset, uint32_t value_to_display)
 //SPI
 void spi_init(void)
 {
-    // Set number of valid bytes in WDATA to 2
-    pt2SPI->control = 0x00000040;
+    // Set number of valid bytes in WDATA to 2, set slave select
+    // signals to active low
+    pt2SPI->control = 0x00002040;
 }
 
 void spi_send_byte(uint8_t byte_to_send)
