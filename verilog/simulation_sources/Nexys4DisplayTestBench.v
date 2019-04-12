@@ -88,4 +88,4 @@ module Nexys4DisplayTestBench ();
         $stop;
     end
 
-endmodule // LoopFilterTestBench 
+endmodule // Nexys4DisplayTestBench 
