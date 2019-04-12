@@ -22,7 +22,7 @@ module SPIMasterControl(
     localparam IDLE = 1'b0, SHIFTING = 1'b1;
     localparam SPI_CLOCK_IDLE = 1'b1;
 
-    reg[4:0] count_r, next_count_r;
+    reg[4:0] count_r;
     reg[31:0] read_data_r, write_data_r;
     reg spi_clk_waiting_r;
     reg ctrl_state_r;
@@ -52,22 +52,19 @@ module SPIMasterControl(
         .output_pulse_o(reset_fill_level_spi_clk_x)        
     );
     
-    always @(posedge clk_i) begin
-        count_r <= next_count_r;
-    end
-    
     // Need to generate SPI clk @ ~2.5 MHz when reading for 7 cycles,
     // currently much faster than that for ease of simulation
-    always @(count_r, rstn_i) begin
-        next_count_r          <= count_r + 5'd1;
-        
+    always @(posedge clk_i) begin
         if(count_r == 5'd5) begin 
-            next_count_r      <= 5'd0; 
+            count_r           <= 5'd0; 
             spi_clk_waiting_r <= ~spi_clk_waiting_r;
-        end        
+        end  
+        else begin
+            count_r           <= count_r + 5'd1;
+        end
         
         if(~rstn_i) begin
-            next_count_r      <= 5'd0;
+            count_r           <= 5'd0;
             spi_clk_waiting_r <= 1'b0;
         end
     end

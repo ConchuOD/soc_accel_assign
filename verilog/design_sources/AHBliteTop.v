@@ -22,8 +22,8 @@ module AHBliteTop (
         input         btnC,        // centre button
         input         btnR,        // right button
         input         aclMISO,     //
-        input         aclSCK,      //
-        input         aclSS,       //
+        output        aclSCK,      //
+        output        aclSS,       //
         input         aclInt1,     //
         input         aclInt2,     //
         input         RsRx,        // serial port receive line
@@ -73,19 +73,22 @@ module AHBliteTop (
     wire        spi_ss_display_x = spi_ss_x[SPI_SS_DISPLAY_INDEX];
     wire        spi_clk_x;
     wire        spi_mosi_x;
-    wire        spi_miso_x;
+    reg         spi_miso_r;
     wire        spi_miso_display_x;
     
     assign      aclSCK  = spi_clk_x;
     assign      aclSS   = spi_ss_x[SPI_SS_ACCEL_INDEX];
     assign      aclMOSI = spi_mosi_x;
     
-    always @(spi_ss_x) begin
+    always @(*) begin        
         if(spi_ss_display_x) begin
-            spi_miso_x = spi_miso_display_x;
+            spi_miso_r = spi_miso_display_x;
         end
         else if(aclSS) begin
-            spi_miso_x = aclMISO;
+            spi_miso_r = aclMISO;
+        end
+        else begin
+            spi_miso_r = 1'b1;
         end
     end    
 
@@ -326,14 +329,14 @@ module AHBliteTop (
         .HREADY(HREADY),    
         .HADDR(HADDR),
         .HWRITE(HWRITE),
-        .HSIZE(HSIZE),
+        .HSIZE(HSIZE),        
         .HTRANS(HTRANS),
         .HWDATA(HWDATA),
         .HRDATA(HRDATA_spi),
         .HREADYOUT(HREADYOUT_spi),    
-        .SPI_MISO_i(SPI_miso_x),
-        .SPI_MOSI_o(SPI_mosi_x),
-        .SPI_SS_o(SPI_ss_x),
+        .SPI_MISO_i(spi_miso_r),
+        .SPI_MOSI_o(spi_mosi_x),
+        .SPI_SS_o(spi_ss_x),
         .SPI_CLK_o(spi_clk_x)
     );
   

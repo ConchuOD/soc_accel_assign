@@ -8,7 +8,6 @@ module SPIMaster (
     input              spi_miso_i,
     output wire        spi_mosi_o,
     output wire        spi_clk_o,
-    output wire        spi_ss_o,
     output wire [31:0] spi_read_data_o,
     output wire [ 2:0] spi_read_data_bytes_valid_o
 );
@@ -17,7 +16,7 @@ module SPIMaster (
     wire load_shift_reg_byte_x, load_shift_reg_bit_x, clear_shift_reg_x;
     
     // Wire enable directly to slave select - might change this
-    assign spi_ss_o = enable_i;
+    //assign spi_ss_o = enable_i;
     
     SPIShiftReg #(
         .RWn(1)

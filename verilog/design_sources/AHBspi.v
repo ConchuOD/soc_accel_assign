@@ -59,7 +59,9 @@ module AHBspi (
         // Address phase
         if(HREADY) begin
             HADDR_r <= HADDR;
-            HSIZE_r <= HSIZE;
+            HSIZE_r <= HSIZE; // Not used currently - probably shoud be
+            // e.g. if num valid bytes in control register is greater than HSIZE for
+            // an intended write, don't write down...
             write_r <= HWRITE & HSEL & HTRANS[1];
             read_r  <= ~HWRITE & HSEL & HTRANS[1];
         end 
@@ -82,7 +84,6 @@ module AHBspi (
         reading_data_r                                    <= 1'b0;
         if(write_r) begin
             case (HADDR_r[3:0])
-            (CONTROL_STATUS_ADDR):   ctrl_status_r        <= HWDATA[15:0] & CONTROL_STATUS_REG_BITMASK;                                         
             (SPI_SLAVE_SELECT_ADDR): spi_ss_r             <= HWDATA;
             (SPI_WDATA_ADDR): begin
                 write_only_r                              <= HWDATA;
@@ -111,8 +112,6 @@ module AHBspi (
         end
     
         if(~HRESETn) begin
-            HADDR_r                         <= 32'd0;
-            HWRITE_r                        <= 1'b0;
             HRDATA                          <= 32'b0;
             spi_ss_r                        <= 32'hFF_FF_FF_FF;
             write_only_r                    <= 32'd0;
@@ -124,6 +123,11 @@ module AHBspi (
     
     always @(posedge HCLK) begin
         reset_fill_level_r <= 1'b0;
+        
+        if(write_r & (HADDR_r[3:0] == CONTROL_STATUS_ADDR)) begin
+            ctrl_status_r <= HWDATA[15:0] & CONTROL_STATUS_REG_BITMASK;                                         
+        end
+        
         case (spi_state_r)
         IDLE : begin
             if(writing_data_r && spi_ss_reduce_c && spi_data_byte_writes_required_r > 3'd0) begin
@@ -175,7 +179,6 @@ module AHBspi (
                 spi_state_r                         <= IDLE;
                 spi_enable_r                        <= 1'b0;
                 ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'd0;
-                read_hold_r                         <= 1'b0;
                 num_bytes_r                         <= 3'd0;
                 reset_fill_level_r                  <= 1'b0;
                 mask_fill_level_r                   <= 1'b0;

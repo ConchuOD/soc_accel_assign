@@ -30,7 +30,7 @@ generate
         // TODO: Async reset - will have to talk about this
         always @(posedge clk_i, negedge rstn_i) begin 
             if(load_bit_en_i) begin
-                shift_reg_r = {shift_reg_r[6:0], data_bit_i};
+                shift_reg_r <= {shift_reg_r[6:0], data_bit_i};
             end
             
             if(~rstn_i) begin

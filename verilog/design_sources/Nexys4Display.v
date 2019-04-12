@@ -144,7 +144,7 @@ module Nexys4Display (
                 if (~rst_low_i) register_digit_r[reg_inc] <= 8'h00; //TODO              
                 else            register_digit_r[reg_inc] <= register_digit_next_r[reg_inc];      
             end
-            always @ (rx_address_r, rx_value_r, register_digit_r, spi_rx_transfer_complete_r)
+            always @ (rx_address_r, rx_value_r, register_digit_r[reg_inc], spi_rx_transfer_complete_r)
             begin
                 if (spi_rx_transfer_complete_r && rx_address_r == reg_inc[3:0]) register_digit_next_r[reg_inc] = rx_value_r;
                 else                                                            register_digit_next_r[reg_inc] = register_digit_r[reg_inc];
