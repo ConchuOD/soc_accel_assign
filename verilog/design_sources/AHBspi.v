@@ -19,7 +19,7 @@ module AHBspi (
         output wire        SPI_CLK_o
     );
     
-    localparam [3:0] CONTROL_STATUS_ADDR=4'b0000, SPI_SLAVE_SELECT_ADDR=4'b0100, SPI_WDATA_ADDR=4'b1000, SPI_RDATA_ADDR=4'b1100; 
+    localparam [7:0] CONTROL_STATUS_ADDR=8'h00, SPI_SLAVE_SELECT_ADDR=8'h04, SPI_WDATA_ADDR=8'h08, SPI_RDATA_ADDR=8'h12; 
     localparam [15:0] CONTROL_STATUS_REG_BITMASK = 16'hFF_E0; 
     localparam [2:0] BYTE = 3'b000, HALF = 3'b001, WORD = 3'b010;
     localparam[2:0] CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4, CS_WDATA_VALID_BYTES_INDEX = 5,
@@ -28,7 +28,7 @@ module AHBspi (
     localparam IDLE = 1'b0, TRANSACT = 1'b1;
 
     reg [31:0] HADDR_r;
-    reg [ 3:0] HSIZE_r;
+    reg [ 2:0] HSIZE_r;
     reg HWRITE_r;
     reg write_r, read_r; 
     
@@ -67,8 +67,8 @@ module AHBspi (
         end 
 
         if(~HRESETn) begin
-            HADDR_r <= 1'b0;
-            HSIZE_r <= 1'b0;
+            HADDR_r <= 32'b0;
+            HSIZE_r <= 3'b0;
             write_r <= 1'b0;
             read_r  <= 1'b0;
         end
@@ -83,7 +83,7 @@ module AHBspi (
         writing_data_r                                    <= 1'b0; // Only goes high for 1 clock cycle
         reading_data_r                                    <= 1'b0;
         if(write_r) begin
-            case (HADDR_r[3:0])
+            case (HADDR_r[7:0])
             (SPI_SLAVE_SELECT_ADDR): spi_ss_r             <= HWDATA;
             (SPI_WDATA_ADDR): begin
                 write_only_r                              <= HWDATA;
@@ -99,7 +99,7 @@ module AHBspi (
             endcase
         end
         else if (read_r) begin
-            case (HADDR_r[3:0])            
+            case (HADDR_r[7:0])            
             (CONTROL_STATUS_ADDR):   HRDATA              <= {16'b0, ctrl_status_r};
             (SPI_SLAVE_SELECT_ADDR): HRDATA              <= spi_ss_r;
             (SPI_WDATA_ADDR):        HRDATA              <= write_only_r;
@@ -124,7 +124,7 @@ module AHBspi (
     always @(posedge HCLK) begin
         reset_fill_level_r <= 1'b0;
         
-        if(write_r & (HADDR_r[3:0] == CONTROL_STATUS_ADDR)) begin
+        if(write_r & (HADDR_r[7:0] == CONTROL_STATUS_ADDR)) begin
             ctrl_status_r <= HWDATA[15:0] & CONTROL_STATUS_REG_BITMASK;                                         
         end
         
