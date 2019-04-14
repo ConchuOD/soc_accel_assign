@@ -82,11 +82,11 @@ module TB_AHBspi ();
         #20 HRESETn = 1'b1;
         #50;
         
-        // Set number of valid bytes in WDATA to 2, set slave select active high
+        // Set number of valid bytes in WDATA to 2, set slave select active high one-hot
         AHBwrite(WORD, 32'h0, 32'h00_00_20_40);
-        // Set SPI slave select all disabled except last (active low)
+        // Set SPI slave select all disabled except last (one-hot on write)
         // to select the display
-        AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FE);
+        AHBwrite(WORD, 32'h4, 32'h00_00_00_01);
         // Write two bytes to the display
         AHBwrite(HALF, 32'h8, 32'h00_00_11_08);
         AHBidle;
