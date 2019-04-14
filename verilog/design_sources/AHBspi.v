@@ -10,7 +10,7 @@ module AHBspi (
         input       [2:0]  HSIZE,
         input       [1:0]  HTRANS,
         input       [31:0] HWDATA,
-        output reg  [31:0] HRDATA,
+        output wire [31:0] HRDATA,
         output wire        HREADYOUT,
         // SPI
         input              SPI_MISO_i,
@@ -36,16 +36,18 @@ module AHBspi (
     reg[15:0] ctrl_status_r; 
     reg[31:0] spi_ss_r, write_only_r, read_only_r;
     wire[31:0] spi_ss_c;
+    
     reg spi_state_r;   
     wire spi_ss_reduce_c;
     reg spi_enable_r;
     wire[31:0] spi_read_data_x;
+    reg[31:0] read_data_r;
     
-    reg read_hold_r;
+    //reg read_hold_r;
     reg[2:0] num_bytes_r;
     
-    reg writing_data_r;
-    reg reading_data_r;
+    //reg writing_data_r;
+    //reg reading_data_r;
     reg reset_fill_level_r;
     
     reg[2:0] spi_data_byte_writes_required_r;
@@ -59,7 +61,7 @@ module AHBspi (
         // Address phase
         if(HREADY) begin
             HADDR_r <= HADDR;
-            HSIZE_r <= HSIZE; // Not used currently - probably shoud be
+            HSIZE_r <= HSIZE; // Not used currently - probably should be
             // e.g. if num valid bytes in control register is greater than HSIZE for
             // an intended write, don't write down...
             write_r <= HWRITE & HSEL & HTRANS[1];
@@ -72,7 +74,27 @@ module AHBspi (
             write_r <= 1'b0;
             read_r  <= 1'b0;
         end
-    end 
+    end     
+    
+    always @(HADDR_r, ctrl_status_r, spi_ss_r, write_only_r, read_only_r) begin
+        case (HADDR_r[7:0])
+        (CONTROL_STATUS_ADDR):   read_data_r              <= {16'b0, ctrl_status_r};
+        (SPI_SLAVE_SELECT_ADDR): read_data_r              <= spi_ss_r;
+        (SPI_WDATA_ADDR):        read_data_r              <= write_only_r;
+        (SPI_RDATA_ADDR):        read_data_r              <= read_only_r;               
+        endcase
+    end
+    
+    assign HRDATA = read_data_r;
+    
+    always @(ctrl_status_r, HADDR_r) begin
+        if((ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3] <= 3'd4) & (HADDR_r[7:0] != SPI_RDATA_ADDR)) begin
+            spi_data_byte_writes_required_r           <= ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3];               
+        end
+        else begin
+            spi_data_byte_writes_required_r           <= 3'd0;               
+        end    
+    end
     
     //                              CONTROL/STATUS
     // | CPOL | CPHA | SPI_SS_ACTIVE_HIGH | NOT USED | WDATA_VALID_BYTES | WDATA_FINISHED | RDATA_BYTES_VALID_COUNT | RDATA_READY |
@@ -80,44 +102,16 @@ module AHBspi (
     
     always @(posedge HCLK) begin
         // Data phase   
-        writing_data_r                                    <= 1'b0; // Only goes high for 1 clock cycle
-        reading_data_r                                    <= 1'b0;
         if(write_r) begin
             case (HADDR_r[7:0])
             (SPI_SLAVE_SELECT_ADDR): spi_ss_r             <= HWDATA;
-            (SPI_WDATA_ADDR): begin
-                write_only_r                              <= HWDATA;
-                writing_data_r                            <= 1'b1;
-                
-                if(ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3] <= 3'd4) begin
-                    spi_data_byte_writes_required_r           <= ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3];               
-                end
-                else begin
-                    spi_data_byte_writes_required_r           <= 3'd0;               
-                end                
-            end
+            (SPI_WDATA_ADDR):        write_only_r         <= HWDATA;            
             endcase
-        end
-        else if (read_r) begin
-            case (HADDR_r[7:0])            
-            (CONTROL_STATUS_ADDR):   HRDATA              <= {16'b0, ctrl_status_r};
-            (SPI_SLAVE_SELECT_ADDR): HRDATA              <= spi_ss_r;
-            (SPI_WDATA_ADDR):        HRDATA              <= write_only_r;
-            (SPI_RDATA_ADDR): begin
-                HRDATA                                   <= read_only_r;
-                spi_data_byte_writes_required_r          <= 3'd0;
-                reading_data_r                           <= 1'b1;
-            end
-            endcase  
         end
     
         if(~HRESETn) begin
-            HRDATA                          <= 32'b0;
             spi_ss_r                        <= 32'hFF_FF_FF_FF;
             write_only_r                    <= 32'd0;
-            spi_data_byte_writes_required_r <= 1'b0;
-            writing_data_r                  <= 1'b0;
-            reading_data_r                  <= 1'b0;
         end
     end
     
@@ -130,7 +124,7 @@ module AHBspi (
         
         case (spi_state_r)
         IDLE : begin
-            if(writing_data_r && spi_ss_reduce_c && spi_data_byte_writes_required_r > 3'd0) begin
+            if(write_r & spi_ss_reduce_c & spi_data_byte_writes_required_r > 3'd0) begin
                 spi_state_r                            <= TRANSACT;
                 spi_enable_r                           <= 1'b1; 
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // The data requested to be written has not been written yet                
@@ -146,11 +140,11 @@ module AHBspi (
             end           
             
             // Logic for the number of valid bytes
-            if(reading_data_r) begin
+            if(read_r & HADDR_r == SPI_RDATA_ADDR) begin
                 reset_fill_level_r <= 1'b1;
                 num_bytes_r        <= spi_read_data_bytes_valid_x;
             end            
-            else if(spi_read_data_bytes_valid_x == num_bytes_r) begin
+            else if(spi_read_data_bytes_valid_x == num_bytes_r & num_bytes_r != 3'd0) begin
                 mask_fill_level_r <= 1'b1;
             end
             else begin
@@ -173,6 +167,7 @@ module AHBspi (
                 ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b0;                 
             end
             
+            // Update the read_data register
             read_only_r <= spi_read_data_x;
             
             if(~spi_ss_reduce_c) begin
