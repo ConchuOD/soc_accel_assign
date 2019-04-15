@@ -61,7 +61,10 @@ void UART_ISR()
 void ADXL_ISR()
 {
     g_data_ready_flag = true;
+	counter++;
+    printf("\r\ninterrupt %d\r\n",counter); 
 }
+
 //ADXL362
 void adxl_send_read_command(uint8_t address_to_read);
 void adxl_send_write_command(uint8_t address_to_write);
@@ -110,6 +113,8 @@ int main(void) {
     uint8_t *  bcd_y_data;
     uint8_t *  bcd_z_data;
 	
+	uint32_t test = 4294967295UL;
+	
 		uint32_t current_interrupts;
     
     
@@ -117,30 +122,37 @@ int main(void) {
     uint8_t TxBuf[ARRAY_SIZE(RxBuf)];
 
     //enable interrupts
-    pt2NVIC->Enable  = (1 << NVIC_UART_BIT_POS);    // Enable interrupts for UART in the NVIC
+    pt2NVIC->Enable = (1 << NVIC_UART_BIT_POS);    // Enable interrupts for UART & ADXL in the NVIC
     
 	
-		pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);   // Enable rx data available interrupt, and no others.
+		pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);   // 
     wait_n_loops(nLOOPS_per_DELAY);                             // wait a little
     
-	
-		pt2NVIC->Enable  = pt2NVIC->Enable | (1 << NVIC_ADXL_BIT_POS);    // Enable interrupts for ADXL in the NVIC
     printf("\r\nConor/Andrew Assignment 3\r\n");                // output welcome message
-	
     //spi setup
 		spi_init();
+		printf("\r\nspi init complete\r\n");
+    wait_n_loops(nLOOPS_per_DELAY);                             // wait a little                           // wait a little
     //adxl setup
     adxl_init();
+		printf("\r\nadxl init complete\r\n");
     //display setup
     display_enable_all_digits();
+		printf("\r\ndisplay init complete\r\n");
+    display_send_write_data(0x01,0x07);
+		printf("\r\nwrote 7 on display\r\n");
 
-    
+    //pt2NVIC->Enable =  pt2NVIC->Enable | (1UL << NVIC_ADXL_BIT_POS);
+		printf("\r\nenabled adxl\r\n");
     
     for(;/*ever*/;)
     {
-        __wfi(); // use sleep somehow
+			test =  pt2NVIC->Enable;
+		//printf("\r\n%010u\r\n",test);
+        //__wfi(); // use sleep somehow
         if(g_data_ready_flag) 
         {
+					printf("\r\ndata ready !\r\n");
             //disable interruts TODO
             g_data_ready_flag = false;
             adxl_send_read_command(0x00); //TODO do I need to send junk to wait?
@@ -161,56 +173,6 @@ int main(void) {
             display_send_value(0x01,adxl_x_data);
         }
     }
-
-    /*
-    while(1){           // loop forever
-            
-            // Do some processing before entering Sleep Mode
-            
-            pt2GPIO->LED = pt2GPIO->Switches; // Echo the switches onto the LEDs
-            wait_n_loops(nLOOPS_per_DELAY);     // delay a little
-            INVERT_LEDS;                                            // invert the 8 rightmost LEDs
-            wait_n_loops(nLOOPS_per_DELAY);
-            INVERT_LEDS;
-            wait_n_loops(nLOOPS_per_DELAY);
-            
-            printf("\r\nType some characters: ");
-            while (BufReady == 0)
-            {           
-                __wfi();  // Wait For Interrupt: enter Sleep Mode - wake on character received
-                pt2GPIO->LED = RxBuf[counter-1];  // display code for character received
-            }
-
-            // get here when CR entered or buffer full - do some processing with interrupts disabled
-            pt2NVIC->Disable     = (1 << NVIC_UART_BIT_POS);    // Disable interrupts for UART in the NVIC
-
-            // ---- start of critical section ----
-            for (i=0; i<=counter; i++)
-            {
-                if (RxBuf[i] >= 'A') {                          // if this character is a letter (roughly)
-                    TxBuf[i] = RxBuf[i] ^ CASE_BIT;  // copy to transmit buffer, changing case
-                }
-                else {
-                    TxBuf[i] = RxBuf[i];             // non-letter so don't change case
-                }
-            }
-            
-            BufReady = 0;   // clear the flag
-                
-            // ---- end of critical section ----        
-            
-            pt2NVIC->Enable  = (1 << NVIC_UART_BIT_POS);        // Enable interrupts for UART in the NVIC
-
-
-            printf("\r\n:--> |%s|\r\n", TxBuf);  // print the results between bars
-            printf("\r\nNumber Of Characters:%d\r\n", counter);  // print the number of characters
-            printf("\r\nSwitch State:%d\r\n",pt2GPIO->Switches);
-            
-            counter  = 0; // clear the counter for next sentence    
-            
-        } // end of infinite loop
-        */
-
 }  // end of main
 
 //ADXL362
@@ -260,26 +222,50 @@ uint8_t adxl_read_status(void)
     
     return rx_word;
 }
+uint32_t adxl_read_register(uint8_t address)
+{
+    uint32_t rx_word;
+
+    adxl_send_read_command(address);
+    //while(!SPI_WRITE_COMPLETE){}
+    //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
+    //while(!SPI_WRITE_COMPLETE){}
+    //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
+    //while(!SPI_WRITE_COMPLETE){}
+    while(!SPI_DATA_READY){}
+		printf("%08X\r\n",pt2SPI->slave_select);	
+    spi_clear_ss();
+    rx_word = spi_read_word();
+    
+    return rx_word;
+}
 void adxl_init(void)
 {
     //write to 2C - 
+	printf("%08X\r\n",adxl_read_register(0x00));
+	printf("%08X\r\n",adxl_read_register(0x2C));
     adxl_send_write_command(0x2C);
     adxl_send_byte(0x11);
+	printf("%08X\r\n",adxl_read_register(0x2C));
     //write to 2D - 
     adxl_send_write_command(0x2D);
     adxl_send_byte(0x02);
-    //write to 2A - need to set interrupts active high &map DATA_READY
+    //write to 2A - need to set interrupts active high & map DATA_READY
     adxl_send_write_command(0x2A);
-    adxl_send_byte(0x81);
+    adxl_send_byte(0x1);
 
 }
 
 void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write)
 {
     uint16_t half_word_to_send;
+		printf("display_send_write_data\r\n");	
     half_word_to_send = ( ((uint16_t) DISPLAY_WRITE_COMMAND) << 12 ) | ( (uint16_t) (address_to_write & 0x0F) << 8 ) | (uint16_t) value_to_write; //TODO check these 
+	printf("%04X\r\n",half_word_to_send);
     spi_set_ss(DISPLAY_SS_POS);
+		printf("%08X\r\n",pt2SPI->slave_select);	
     spi_send_half_word(half_word_to_send);
+		printf("%08X\r\n",pt2SPI->write);
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();    
 }

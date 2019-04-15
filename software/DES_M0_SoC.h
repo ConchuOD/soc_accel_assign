@@ -100,7 +100,7 @@ typedef struct
 #define pt2NVIC ((NVIC_t *)0xE000E100)
 #define pt2UART ((UART_t *)0x51000000)
 #define pt2GPIO ((GPIO_t *)0x50000000)
-#define pt2SPI  ((SPI_t *) 0x52000000)
+#define pt2SPI  ((SPI_t  *)0x52000000)
 
 
 #endif

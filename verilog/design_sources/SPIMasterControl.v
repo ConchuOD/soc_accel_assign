@@ -55,7 +55,7 @@ module SPIMasterControl(
     // Need to generate SPI clk @ ~2.5 MHz when reading for 7 cycles,
     // currently much faster than that for ease of simulation
     always @(posedge clk_i) begin
-        if(count_r == 5'd5) begin 
+        if(count_r == 5'd10) begin 
             count_r           <= 5'd0; 
             spi_clk_waiting_r <= ~spi_clk_waiting_r;
         end  

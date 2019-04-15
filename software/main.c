@@ -20,9 +20,9 @@
 
 #define ARRAY_SIZE(__x__)       (sizeof(__x__)/sizeof(__x__[0]))
 
-volatile uint8  counter  = 0; // current number of char received on UART currently in RxBuf[]
-volatile uint8  BufReady = 0; // Flag to indicate if there is a sentence worth of data in RxBuf
-volatile uint8  RxBuf[BUF_SIZE];
+volatile uint8_t  counter  = 0; // current number of char received on UART currently in RxBuf[]
+volatile uint8_t  BufReady = 0; // Flag to indicate if there is a sentence worth of data in RxBuf
+volatile uint8_t  RxBuf[BUF_SIZE];
 
 
 //////////////////////////////////////////////////////////////////
@@ -50,8 +50,8 @@ void UART_ISR()
 //////////////////////////////////////////////////////////////////
 // Software delay function
 //////////////////////////////////////////////////////////////////
-void wait_n_loops(uint32 n) {
-    volatile uint32 i;
+void wait_n_loops(uint32_t n) {
+    volatile uint32_t i;
         for(i=0;i<n;i++){
             ;
         }
@@ -62,8 +62,8 @@ void wait_n_loops(uint32 n) {
 // Main Function
 //////////////////////////////////////////////////////////////////
 int main(void) {
-    uint8 i;
-    uint8 TxBuf[ARRAY_SIZE(RxBuf)];
+    uint8_t i;
+    uint8_t TxBuf[ARRAY_SIZE(RxBuf)];
 
     
     pt2UART->Control = (1 << UART_RX_FIFO_EMPTY_BIT_INT_POS);       // Enable rx data available interrupt, and no others.
