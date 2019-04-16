@@ -81,10 +81,10 @@ module AHBliteTop (
     assign      aclMOSI = spi_mosi_x;
     
     always @(*) begin        
-        if(spi_ss_display_x) begin
+        if(~spi_ss_display_x) begin
             spi_miso_r = spi_miso_display_x;
         end
-        else if(aclSS) begin
+        else if(~aclSS) begin
             spi_miso_r = aclMISO;
         end
         else begin

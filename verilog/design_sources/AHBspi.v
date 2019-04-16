@@ -20,7 +20,7 @@ module AHBspi (
     );
     
     localparam [7:0] CONTROL_STATUS_ADDR=8'h00, SPI_SLAVE_SELECT_ADDR=8'h04, SPI_WDATA_ADDR=8'h08, SPI_RDATA_ADDR=8'h0C; 
-    localparam [15:0] CONTROL_STATUS_REG_BITMASK = 16'hFF_E0; 
+    localparam [31:0] CONTROL_STATUS_REG_BITMASK = 32'h00_00_FF_E0; 
     localparam [2:0] BYTE = 3'b000, HALF = 3'b001, WORD = 3'b010;
     localparam[3:0] CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4, CS_WDATA_VALID_BYTES_INDEX = 5,
                     CS_SS_ACTIVE_HIGH = 13;
@@ -33,7 +33,7 @@ module AHBspi (
     reg write_r, read_r; 
     
     reg mask_fill_level_r;
-    reg[15:0] ctrl_status_r; 
+    reg[31:0] ctrl_status_r; 
     reg[31:0] spi_ss_r, write_only_r, read_only_r;
     wire[31:0] spi_ss_c;
     
@@ -78,7 +78,7 @@ module AHBspi (
     
     always @(HADDR_r, ctrl_status_r, spi_ss_r, write_only_r, read_only_r) begin
         case (HADDR_r[7:0])
-        (CONTROL_STATUS_ADDR):   read_data_r              <= {16'b0, ctrl_status_r};
+        (CONTROL_STATUS_ADDR):   read_data_r              <= ctrl_status_r;
         (SPI_SLAVE_SELECT_ADDR): read_data_r              <= spi_ss_r;
         (SPI_WDATA_ADDR):        read_data_r              <= write_only_r;
         (SPI_RDATA_ADDR):        read_data_r              <= read_only_r;               
@@ -119,7 +119,7 @@ module AHBspi (
         reset_fill_level_r <= 1'b0;
         
         if(write_r & (HADDR_r[7:0] == CONTROL_STATUS_ADDR)) begin
-            ctrl_status_r <= HWDATA[15:0] & CONTROL_STATUS_REG_BITMASK;                                         
+            ctrl_status_r <= HWDATA & CONTROL_STATUS_REG_BITMASK;                                         
         end
         
         case (spi_state_r)
@@ -185,7 +185,7 @@ module AHBspi (
             spi_state_r        <= IDLE;
             read_only_r        <= 32'd0;
             spi_enable_r       <= 1'b0;
-            ctrl_status_r      <= 16'd0;
+            ctrl_status_r      <= 32'd0;
             reset_fill_level_r <= 1'b0;
             mask_fill_level_r  <= 1'b0;
             num_bytes_r        <= 3'd0;

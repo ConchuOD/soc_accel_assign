@@ -52,7 +52,7 @@ module TB_AHBspi ();
         .spi_sclk_i(SPI_clk_x),   //id
         .spi_ss_i(SPI_ss_disp_c), // Display is slave index 0
         .spi_mosi_i(SPI_mosi_x),  //id
-        .spi_miso_o(),  //id
+        .spi_miso_o(SPI_miso_x),  //id
         .segment_o(),
         .digit_o()
     );
@@ -137,7 +137,7 @@ module TB_AHBspi ();
     reg[5:0] count_r;    
     
     //always @(count_r) begin
-    assign SPI_miso_x = data_test[count_r];
+    //assign SPI_miso_x = data_test[count_r];
     //end
     
     always @(posedge SPI_clk_x) begin    

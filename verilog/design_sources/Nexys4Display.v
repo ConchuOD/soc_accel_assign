@@ -52,6 +52,7 @@ module Nexys4Display (
     /*************************************************************************/
 
     assign spi_rx_clk = (~spi_ss_i) & spi_sclk_i;
+    assign spi_miso_o = spi_rx_bit_count_r[1]; // Idle high
 
     //spi receiver implemented by shift register
     always @ (posedge spi_sclk_i or negedge rst_low_i)
