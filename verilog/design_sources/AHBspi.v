@@ -22,7 +22,7 @@ module AHBspi (
     localparam [7:0] CONTROL_STATUS_ADDR=8'h00, SPI_SLAVE_SELECT_ADDR=8'h04, SPI_WDATA_ADDR=8'h08, SPI_RDATA_ADDR=8'h0C; 
     localparam [15:0] CONTROL_STATUS_REG_BITMASK = 16'hFF_E0; 
     localparam [2:0] BYTE = 3'b000, HALF = 3'b001, WORD = 3'b010;
-    localparam[2:0] CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4, CS_WDATA_VALID_BYTES_INDEX = 5,
+    localparam[3:0] CS_RDATA_READY_INDEX = 0, CS_RDATA_BYTES_VALID_COUNT_INDEX = 1, CS_WDATA_FINISHED_INDEX = 4, CS_WDATA_VALID_BYTES_INDEX = 5,
                     CS_SS_ACTIVE_HIGH = 13;
                     
     localparam IDLE = 1'b0, TRANSACT = 1'b1;
@@ -55,7 +55,7 @@ module AHBspi (
     
     assign spi_ss_c        = (ctrl_status_r[CS_SS_ACTIVE_HIGH]) ? ~spi_ss_r : spi_ss_r;
     assign spi_ss_reduce_c = ~&spi_ss_c;
-    assign SPI_SS_o = spi_ss_c;    
+    assign SPI_SS_o        = spi_ss_c;
     
     always @(posedge HCLK) begin
         // Address phase
