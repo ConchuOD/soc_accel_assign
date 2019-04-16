@@ -24,6 +24,9 @@
 #define DISPLAY_SS_POS          0
 #define ADXL_SS_POS             1
 
+#define CS_WDATA_VALID_BYTES_POS 5
+#define WDATA_VALID_BYTES_BITMASK 0x000000E0;
+
 #define DISPLAY_DIGITS_PER_VAR  4
 
 #define adxl_send_junk_byte()   adxl_send_byte(0xFF)
@@ -76,6 +79,7 @@ uint16_t * adxl_convert_bcd(uint32_t data_to_convert);
 
 //Display
 void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write);
+uint32_t display_read_register(uint8_t address);
 void display_enable_all_digits(void);
 void display_value_to_digits(uint32_t value_to_display, uint8_t * digits, const uint8_t num_digits);
 void display_send_value(uint8_t digit_offset, uint32_t value_to_display);
@@ -87,6 +91,7 @@ uint32_t spi_read_word(void);
 void spi_send_half_word(uint16_t half_word_to_send);
 void spi_set_ss(uint8_t ss_pos);
 void spi_clear_ss(void);
+void spi_change_valid_write_bytes(uint8_t);
 
 //////////////////////////////////////////////////////////////////
 // Software delay function
@@ -141,6 +146,7 @@ int main(void) {
 		printf("\r\ndisplay init complete\r\n");
     display_send_write_data(0x01,0x07);
 		printf("\r\nwrote 7 on display\r\n");
+		display_read_register(0);
 
     //pt2NVIC->Enable =  pt2NVIC->Enable | (1UL << NVIC_ADXL_BIT_POS);
 		printf("\r\nenabled adxl\r\n");
@@ -179,7 +185,7 @@ int main(void) {
 void adxl_send_read_command(uint8_t address_to_read)
 {
     uint16_t half_word_to_send;
-    half_word_to_send = ((uint32_t) ADXL_READ_COMMAND << 16) | address_to_read;
+    half_word_to_send = (((uint32_t) ADXL_READ_COMMAND) << 8) | address_to_read;
     spi_set_ss(ADXL_SS_POS);
     spi_send_half_word(half_word_to_send);
     //dont clear SS
@@ -187,9 +193,10 @@ void adxl_send_read_command(uint8_t address_to_read)
 void adxl_send_write_command(uint8_t address_to_write)
 {
     uint16_t half_word_to_send;
-    half_word_to_send = ((uint32_t) ADXL_WRITE_COMMAND << 16) | address_to_write;
+    half_word_to_send = (((uint32_t) ADXL_WRITE_COMMAND) << 8) | address_to_write;
     spi_set_ss(ADXL_SS_POS);
     spi_send_half_word(half_word_to_send);
+	printf("write: %08X\r\n",pt2SPI->write);
     //dont clear SS
 
 }
@@ -225,16 +232,16 @@ uint8_t adxl_read_status(void)
 uint32_t adxl_read_register(uint8_t address)
 {
     uint32_t rx_word;
-
     adxl_send_read_command(address);
     //while(!SPI_WRITE_COMPLETE){}
     //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
     //while(!SPI_WRITE_COMPLETE){}
     //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
     //while(!SPI_WRITE_COMPLETE){}
-    while(!SPI_DATA_READY){}
-		printf("%08X\r\n",pt2SPI->slave_select);	
-    spi_clear_ss();
+    while(!(pt2SPI->control & (uint32_t) 1))
+			{
+		}
+		spi_clear_ss();
     rx_word = spi_read_word();
     
     return rx_word;
@@ -242,11 +249,12 @@ uint32_t adxl_read_register(uint8_t address)
 void adxl_init(void)
 {
     //write to 2C - 
-	printf("%08X\r\n",adxl_read_register(0x00));
-	printf("%08X\r\n",adxl_read_register(0x2C));
+	printf("reg00: %08X\r\n",adxl_read_register(0x00));
+	printf("reg2C: %08X\r\n",adxl_read_register(0x2C));
     adxl_send_write_command(0x2C);
     adxl_send_byte(0x11);
-	printf("%08X\r\n",adxl_read_register(0x2C));
+	printf("reg2C: %08X\r\n",adxl_read_register(0x2C));
+	printf("slave_select: %08X\r\n",pt2SPI->slave_select);
     //write to 2D - 
     adxl_send_write_command(0x2D);
     adxl_send_byte(0x02);
@@ -268,6 +276,31 @@ void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write)
 		printf("%08X\r\n",pt2SPI->write);
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();    
+}
+uint32_t display_read_register(uint8_t address)
+{
+    uint32_t rx_word;
+	printf("ctrl: %08X\r\n",pt2SPI->control);
+    spi_set_ss(DISPLAY_SS_POS);
+    spi_send_half_word(0xFFFF);
+    //while(!SPI_WRITE_COMPLETE){}
+    //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
+    //while(!SPI_WRITE_COMPLETE){}
+    //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
+    //while(!SPI_WRITE_COMPLETE){}
+    while(!(pt2SPI->control & (uint32_t) 1))
+			{
+		}
+
+	rx_word = pt2SPI->control;
+		spi_clear_ss();
+		
+	printf("ctrl: %08X\r\n",rx_word);
+    rx_word = spi_read_word();
+	printf("rx: %08X\r\n",rx_word);
+		
+    
+    return rx_word;
 }
 void display_enable_all_digits(void)
 {
@@ -326,12 +359,32 @@ void spi_init(void)
     // Set number of valid bytes in WDATA to 2, set slave select
     // signals to active low
     pt2SPI->control = 0x00002040;
+
+	
+		spi_change_valid_write_bytes((uint8_t)1);
 }
 
 void spi_send_byte(uint8_t byte_to_send)
 {
     ;//TODO
 }
+
+void spi_change_valid_write_bytes(uint8_t num_valid_bytes)
+{
+		uint32_t desired_wdata_valid_bytes;
+		uint32_t previous_with_wiped_wdata_valid;
+	
+		printf("in change\r\n");
+		if(num_valid_bytes > 0 && num_valid_bytes <= 4)
+		{
+			num_valid_bytes <<= CS_WDATA_VALID_BYTES_POS;
+			desired_wdata_valid_bytes = num_valid_bytes & WDATA_VALID_BYTES_BITMASK;
+			previous_with_wiped_wdata_valid = pt2SPI->control & ~WDATA_VALID_BYTES_BITMASK;
+			pt2SPI->control = previous_with_wiped_wdata_valid | desired_wdata_valid_bytes;
+			printf("after changing, control:%08X\r\n", pt2SPI->control);
+		}				
+}	
+
 uint32_t spi_read_word(void)
 {
     return pt2SPI->read;
