@@ -137,7 +137,7 @@ int main(void) {
     adxl_init();
 		printf("\r\nadxl init complete\r\n");
     //display setup
-    display_enable_all_digits();
+    //display_enable_all_digits();
 		printf("\r\ndisplay init complete\r\n");
     display_send_write_data(0x01,0x07);
 		printf("\r\nwrote 7 on display\r\n");
@@ -276,7 +276,7 @@ void display_enable_all_digits(void)
     spi_set_ss(DISPLAY_SS_POS);
     spi_send_half_word(half_word_to_send);
     while(!SPI_WRITE_COMPLETE){}
-    spi_clear_ss();    
+    spi_clear_ss(); 
 }
 void display_value_to_digits(uint32_t value_to_display, uint8_t * digits, const uint8_t num_digits)
 {
