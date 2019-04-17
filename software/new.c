@@ -70,7 +70,7 @@ void ADXL_ISR()
 
 //ADXL362
 void adxl_send_read_command(uint8_t address_to_read);
-void adxl_send_write_command(uint8_t address_to_write);
+void adxl_send_write_command(uint8_t address_to_write, uint8_t data_to_send);
 void adxl_send_byte(uint8_t data_to_send);
 void adxl_send_half_word(uint16_t data_to_send);
 uint8_t adxl_read_status(void);
@@ -89,6 +89,7 @@ void spi_init(void);
 void spi_send_byte(uint8_t);
 uint32_t spi_read_word(void);
 void spi_send_half_word(uint16_t half_word_to_send);
+void spi_send_word(uint32_t word_to_send);
 void spi_set_ss(uint8_t ss_pos);
 void spi_clear_ss(void);
 void spi_change_valid_write_bytes(uint8_t);
@@ -190,20 +191,21 @@ void adxl_send_read_command(uint8_t address_to_read)
     spi_send_half_word(half_word_to_send);
     //dont clear SS
 }
-void adxl_send_write_command(uint8_t address_to_write)
+void adxl_send_write_command(uint8_t address_to_write, uint8_t data_to_send)
 {
-    uint16_t half_word_to_send;
-    half_word_to_send = (((uint32_t) ADXL_WRITE_COMMAND) << 8) | address_to_write;
+    uint32_t word_to_send,onebytehalf;
+	  spi_change_valid_write_bytes(0x03);
+    word_to_send = (((uint32_t) ADXL_WRITE_COMMAND) << 16) | (((uint32_t) address_to_write) << 8) | data_to_send;
     spi_set_ss(ADXL_SS_POS);
-    spi_send_half_word(half_word_to_send);
-	printf("write: %08X\r\n",pt2SPI->write);
-    //dont clear SS
+    spi_send_word(word_to_send);
+    while(!SPI_WRITE_COMPLETE){}
+    spi_clear_ss();
+	  spi_change_valid_write_bytes(0x02);
 
 }
 void adxl_send_byte(uint8_t data_to_send) // %TODO this function should maybe allow for cont. writes
 {
-    //dont need to set SS low as it already will be done TODO
-    //spi_set_ss(ADXL_SS_POS);
+    //dont need to set SS low as it already will be done
     spi_send_byte(data_to_send);
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();
@@ -226,7 +228,6 @@ uint8_t adxl_read_status(void)
     spi_clear_ss();
     while(!SPI_DATA_READY){}
     rx_word = spi_read_word();
-    
     return rx_word;
 }
 uint32_t adxl_read_register(uint8_t address)
@@ -238,9 +239,7 @@ uint32_t adxl_read_register(uint8_t address)
     //while(!SPI_WRITE_COMPLETE){}
     //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
     //while(!SPI_WRITE_COMPLETE){}
-    while(!(pt2SPI->control & (uint32_t) 1))
-			{
-		}
+    while(!SPI_DATA_READY){}
 		spi_clear_ss();
     rx_word = spi_read_word();
     
@@ -250,17 +249,16 @@ void adxl_init(void)
 {
     //write to 2C - 
 	printf("reg00: %08X\r\n",adxl_read_register(0x00));
+	printf("reg01: %08X\r\n",adxl_read_register(0x01));
+	printf("reg02: %08X\r\n",adxl_read_register(0x02));
+	printf("reg03: %08X\r\n",adxl_read_register(0x03));
 	printf("reg2C: %08X\r\n",adxl_read_register(0x2C));
-    adxl_send_write_command(0x2C);
-    adxl_send_byte(0x11);
+    adxl_send_write_command(0x2C,0x11);
 	printf("reg2C: %08X\r\n",adxl_read_register(0x2C));
-	printf("slave_select: %08X\r\n",pt2SPI->slave_select);
     //write to 2D - 
-    adxl_send_write_command(0x2D);
-    adxl_send_byte(0x02);
+    adxl_send_write_command(0x2D,0x02);
     //write to 2A - need to set interrupts active high & map DATA_READY
-    adxl_send_write_command(0x2A);
-    adxl_send_byte(0x1);
+    adxl_send_write_command(0x2A,0x1);
 
 }
 
@@ -268,12 +266,12 @@ void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write)
 {
     uint16_t half_word_to_send;
 		printf("display_send_write_data\r\n");	
-    half_word_to_send = ( ((uint16_t) DISPLAY_WRITE_COMMAND) << 12 ) | ( (uint16_t) (address_to_write & 0x0F) << 8 ) | (uint16_t) value_to_write; //TODO check these 
+    half_word_to_send = ( ((uint16_t) DISPLAY_WRITE_COMMAND) << 12 ) | ( (uint16_t) (address_to_write & 0x0F) << 8 ) | (uint16_t) value_to_write;
 	printf("%04X\r\n",half_word_to_send);
     spi_set_ss(DISPLAY_SS_POS);
 		printf("%08X\r\n",pt2SPI->slave_select);	
     spi_send_half_word(half_word_to_send);
-		printf("%08X\r\n",pt2SPI->write);
+		printf("%08X\r\n",pt2SPI->write_word);
     while(!SPI_WRITE_COMPLETE){}
     spi_clear_ss();    
 }
@@ -283,11 +281,6 @@ uint32_t display_read_register(uint8_t address)
 	printf("ctrl: %08X\r\n",pt2SPI->control);
     spi_set_ss(DISPLAY_SS_POS);
     spi_send_half_word(0xFFFF);
-    //while(!SPI_WRITE_COMPLETE){}
-    //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
-    //while(!SPI_WRITE_COMPLETE){}
-    //adxl_send_junk_byte(); //can we have extra status bits that say how many bits are clocked in?
-    //while(!SPI_WRITE_COMPLETE){}
     while(!(pt2SPI->control & (uint32_t) 1))
 			{
 		}
@@ -356,17 +349,13 @@ void display_send_value(uint8_t digit_offset, uint32_t value_to_display)
 //SPI
 void spi_init(void)
 {
-    // Set number of valid bytes in WDATA to 2, set slave select
-    // signals to active low
+    // Set number of valid bytes in WDATA to 2, set slave select signals to active low
     pt2SPI->control = 0x00002040;
-
-	
-		spi_change_valid_write_bytes((uint8_t)1);
 }
 
 void spi_send_byte(uint8_t byte_to_send)
 {
-    ;//TODO
+    pt2SPI->write_half_word = (uint16_t) byte_to_send;
 }
 
 void spi_change_valid_write_bytes(uint8_t num_valid_bytes)
@@ -374,14 +363,12 @@ void spi_change_valid_write_bytes(uint8_t num_valid_bytes)
 		uint32_t desired_wdata_valid_bytes;
 		uint32_t previous_with_wiped_wdata_valid;
 	
-		printf("in change\r\n");
 		if(num_valid_bytes > 0 && num_valid_bytes <= 4)
 		{
 			num_valid_bytes <<= CS_WDATA_VALID_BYTES_POS;
 			desired_wdata_valid_bytes = num_valid_bytes & WDATA_VALID_BYTES_BITMASK;
 			previous_with_wiped_wdata_valid = pt2SPI->control & ~WDATA_VALID_BYTES_BITMASK;
 			pt2SPI->control = previous_with_wiped_wdata_valid | desired_wdata_valid_bytes;
-			printf("after changing, control:%08X\r\n", pt2SPI->control);
 		}				
 }	
 
@@ -391,7 +378,11 @@ uint32_t spi_read_word(void)
 }
 void spi_send_half_word(uint16_t half_word_to_send)
 {
-    pt2SPI->write = half_word_to_send;
+    pt2SPI->write_half_word = half_word_to_send;
+}
+void spi_send_word(uint32_t word_to_send)
+{
+    pt2SPI->write_word = word_to_send;
 }
 void spi_set_ss(uint8_t ss_pos)
 {
