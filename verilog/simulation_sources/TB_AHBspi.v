@@ -128,9 +128,11 @@ module TB_AHBspi ();
         // the display slave select
         //AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FF);
         //AHBidle;
-        #300;        
+        #8000;        
         
         HSELx = 1'b0;
+        
+        $stop;
     end
     
     wire[63:0] data_test = 64'h01_02_03_04_05_06_07_08;

@@ -42,6 +42,7 @@ module AHBspi (
     reg spi_enable_r;
     wire[31:0] spi_read_data_x;
     reg[31:0] read_data_r;
+    reg[31:0] read_data_d1_r;
     
     //reg read_hold_r;
     reg[2:0] num_bytes_r;
@@ -85,7 +86,15 @@ module AHBspi (
         endcase
     end
     
-    assign HRDATA = read_data_r;
+    always @(posedge HCLK) begin
+        read_data_d1_r <= read_data_r;
+        
+        if(~HRESETn) begin
+            read_data_d1_r <= 32'd0;
+        end
+    end
+    
+    assign HRDATA = read_data_d1_r;
     
     always @(ctrl_status_r, HADDR_r) begin
         if((ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3] <= 3'd4) & (HADDR_r[7:0] != SPI_RDATA_ADDR)) begin
