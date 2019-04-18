@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include "DES_M0_SoC.h"
 
 #define BUF_SIZE                100
@@ -36,37 +35,9 @@
 volatile uint8_t  counter  = 0; // current number of char received on UART currently in RxBuf[]
 volatile uint8_t  BufReady = 0; // Flag to indicate if there is a sentence worth of data in RxBuf
 volatile uint8_t  RxBuf[BUF_SIZE];
-volatile bool   g_data_ready_flag;
+volatile uint8_t  g_data_ready_flag = 0;
 
 
-//////////////////////////////////////////////////////////////////
-// Interrupt service routine, runs when UART interrupt occurs - see cm0dsasm.s
-//////////////////////////////////////////////////////////////////
-void UART_ISR()     
-{
-    char c;
-    c = pt2UART->RxData;   // read a character from UART - interrupt only occurs when character waiting
-    RxBuf[counter]  = c;   // Store in buffer
-    counter++;             // Increment counter to indicate that there is now 1 more character in buffer
-    pt2UART->TxData = c;   // write (echo) the character to UART (assuming transmit queue not full!)
-    // counter is now the position that the next character should go into
-    // If this is the end of the buffer, i.e. if counter==BUF_SIZE-1, then null terminate
-    // and indicate the a complete sentence has been received.
-    // If the character just put in was a carriage return, do likewise.
-    if (counter == BUF_SIZE-1 || c == ASCII_CR)  {
-        counter--;                          // decrement counter (CR will be over-written)
-        RxBuf[counter] = NULL;  // Null terminate
-        BufReady       = 1;     // Indicate to rest of code that a full "sentence" has being received (and is in RxBuf)
-    }
-}
-
-
-void ADXL_ISR()
-{
-    g_data_ready_flag = true;
-	counter++;
-    printf("\r\ninterrupt %d\r\n",counter); 
-}
 
 //ADXL362
 void adxl_send_read_command(uint8_t address_to_read);
@@ -95,6 +66,46 @@ void spi_clear_ss(void);
 void spi_change_valid_write_bytes(uint8_t);
 
 //////////////////////////////////////////////////////////////////
+// Interrupt service routine, runs when UART interrupt occurs - see cm0dsasm.s
+//////////////////////////////////////////////////////////////////
+void UART_ISR()     
+{
+    char c;
+    c = pt2UART->RxData;   // read a character from UART - interrupt only occurs when character waiting
+    RxBuf[counter]  = c;   // Store in buffer
+    counter++;             // Increment counter to indicate that there is now 1 more character in buffer
+    pt2UART->TxData = c;   // write (echo) the character to UART (assuming transmit queue not full!)
+    // counter is now the position that the next character should go into
+    // If this is the end of the buffer, i.e. if counter==BUF_SIZE-1, then null terminate
+    // and indicate the a complete sentence has been received.
+    // If the character just put in was a carriage return, do likewise.
+    if (counter == BUF_SIZE-1 || c == ASCII_CR)  {
+        counter--;                          // decrement counter (CR will be over-written)
+        RxBuf[counter] = NULL;  // Null terminate
+        BufReady       = 1;     // Indicate to rest of code that a full "sentence" has being received (and is in RxBuf)
+    }
+}
+
+void ADXL_ISR()
+{
+    uint32_t   first_adxl_word;
+	volatile uint32_t test;
+    uint32_t   second_adxl_word;
+    uint16_t   adxl_x_data;
+	pt2NVIC->Disable	 = (1 << 2);
+    g_data_ready_flag = 0x1;
+	printf("dsfd\r\n");
+	adxl_send_read_command(0x0E); //TODO do I need to send junk to wait?
+	while(!SPI_DATA_READY){}
+	first_adxl_word = spi_read_word();
+	while(!SPI_DATA_READY){}
+	spi_clear_ss();
+            second_adxl_word = spi_read_word();            
+							adxl_x_data = (uint16_t)( ((first_adxl_word & 0xFF) << 8) | ((first_adxl_word >> 8) & 0xFF) ); //%TODO may change - see spec
+
+							printf("%08X %08X\r\n",first_adxl_word,second_adxl_word);
+}
+//////////////////////////////////////////////////////////////////
 // Software delay function
 //////////////////////////////////////////////////////////////////
 void wait_n_loops(uint32_t n) {
@@ -119,9 +130,9 @@ int main(void) {
     uint8_t *  bcd_y_data;
     uint8_t *  bcd_z_data;
 	
-	uint32_t test = 4294967295UL;
 	
 		uint32_t current_interrupts;
+		uint32_t test;
     
     
     uint8_t i;
@@ -149,19 +160,21 @@ int main(void) {
 		printf("\r\nwrote 7 on display\r\n");
 		display_read_register(0);
 
-    //pt2NVIC->Enable =  pt2NVIC->Enable | (1UL << NVIC_ADXL_BIT_POS);
-		printf("\r\nenabled adxl\r\n");
+    //pt2NVIC->Enable 
+		test =  pt2NVIC->Enable | (1UL << NVIC_ADXL_BIT_POS);
+		printf("%08X\r\n",test);
+		pt2NVIC->Enable = test;
+    printf("\r\nenabled adxl\r\n");
     
     for(;/*ever*/;)
     {
-			test =  pt2NVIC->Enable;
-		//printf("\r\n%010u\r\n",test);
-        //__wfi(); // use sleep somehow
+        //__wfi(); // use sleep somehow		  
         if(g_data_ready_flag) 
         {
 					printf("\r\ndata ready !\r\n");
             //disable interruts TODO
-            g_data_ready_flag = false;
+            g_data_ready_flag = 0x0;
+					/*
             adxl_send_read_command(0x00); //TODO do I need to send junk to wait?
             while(!SPI_DATA_READY){}
             first_adxl_word = spi_read_word();
@@ -173,11 +186,11 @@ int main(void) {
             adxl_y_data = (uint32_t)( (((second_adxl_word >> 16) & 0xFF) << 8) | ((second_adxl_word >> 24) & 0xFF) );
             adxl_z_data = (uint32_t)( ((second_adxl_word & 0xFF) << 8)         | ((second_adxl_word >> 8) & 0xFF) );    
             adxl_x_ls8  = (uint8_t)( adxl_x_data & 0xFF );
-            display_send_write_data(0x01,adxl_x_ls8);
+            display_send_write_data(0x01,0x05);
             //bcd_x_data = display_value_to_digits(adxl_x_data);
             //bcd_y_data = display_value_to_digits(adxl_y_data);
             //bcd_z_data = display_value_to_digits(adxl_z_data);
-            display_send_value(0x01,adxl_x_data);
+            display_send_value(0x03,0x05);*/
         }
     }
 }  // end of main
@@ -193,7 +206,7 @@ void adxl_send_read_command(uint8_t address_to_read)
 }
 void adxl_send_write_command(uint8_t address_to_write, uint8_t data_to_send)
 {
-    uint32_t word_to_send,onebytehalf;
+    uint32_t word_to_send;
 	  spi_change_valid_write_bytes(0x03);
     word_to_send = (((uint32_t) ADXL_WRITE_COMMAND) << 16) | (((uint32_t) address_to_write) << 8) | data_to_send;
     spi_set_ss(ADXL_SS_POS);
@@ -247,18 +260,17 @@ uint32_t adxl_read_register(uint8_t address)
 }
 void adxl_init(void)
 {
-    //write to 2C - 
-	printf("reg00: %08X\r\n",adxl_read_register(0x00));
-	printf("reg01: %08X\r\n",adxl_read_register(0x01));
-	printf("reg02: %08X\r\n",adxl_read_register(0x02));
-	printf("reg03: %08X\r\n",adxl_read_register(0x03));
-	printf("reg2C: %08X\r\n",adxl_read_register(0x2C));
-    adxl_send_write_command(0x2C,0x11);
-	printf("reg2C: %08X\r\n",adxl_read_register(0x2C));
+    //write to 2A - need to set interrupts active high & map DATA_READY
+    adxl_send_write_command(0x2A,0x81);
+	  printf("reg2A: %08X\r\n",adxl_read_register(0x2A));
+	
+    //write to 2C - measurement range, half bw and ODR
+    adxl_send_write_command(0x2C,0x10);
+	  printf("reg2C: %08X\r\n",adxl_read_register(0x2C));
+	
     //write to 2D - 
     adxl_send_write_command(0x2D,0x02);
-    //write to 2A - need to set interrupts active high & map DATA_READY
-    adxl_send_write_command(0x2A,0x1);
+	  printf("reg2D: %08X\r\n",adxl_read_register(0x2D));
 
 }
 
