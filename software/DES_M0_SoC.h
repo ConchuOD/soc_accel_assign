@@ -85,8 +85,8 @@ typedef struct
 	volatile uint32_t slave_select;
     union
     {
-		volatile uint16_t  write;
-		volatile uint32_t  reserved2;
+		volatile uint16_t  write_half_word;
+		volatile uint32_t  write_word;
 	};
 	volatile uint32_t read;
 } SPI_t;

@@ -4,10 +4,10 @@
 // Engineer: Brian Mulkeen
 // 
 // Create Date:   18:24:44 15Oct2014 
-// Design Name: 	Cortex-M0 DesignStart system for Digilent Nexys4 board
-// Module Name:   AHBliteTop 
-// Description: 	Top-level module.  Defines AHB Lite bus structure,
-//			instantiates and connects all other modules in system.
+// Design Name:    Cortex-M0 DesignStart system for Digilent Nexys4 board
+// Module Name:    AHBliteTop 
+// Description:    Top-level module.  Defines AHB Lite bus structure,
+//                 instantiates and connects all other modules in system.
 //
 // Revision: 1 - Initial distribution for assignment
 // Revision 0.01 - File Created
