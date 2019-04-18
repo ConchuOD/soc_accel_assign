@@ -29,30 +29,25 @@ module AHBspi (
 
     reg [31:0] HADDR_r;
     reg [ 2:0] HSIZE_r;
-    reg HWRITE_r;
-    reg write_r, read_r; 
+    reg write_r, read_r;
     
-    reg mask_fill_level_r;
     reg[31:0] ctrl_status_r; 
     reg[31:0] spi_ss_r, write_only_r, read_only_r;
     wire[31:0] spi_ss_c;
     
+    reg await_rdata_read_r;
+    wire ahb_read_spi_data_c;
+    
     reg spi_state_r;   
-    wire spi_ss_reduce_c;
-    reg spi_enable_r;
-    wire[31:0] spi_read_data_x;
-    reg[31:0] read_data_r;
-    reg[31:0] read_data_d1_r;
     
-    //reg read_hold_r;
-    reg[2:0] num_bytes_r;
-    
-    //reg writing_data_r;
-    //reg reading_data_r;
+    reg[31:0] read_data_r;   
     reg reset_fill_level_r;
     
-    reg[2:0] spi_data_byte_writes_required_r;
-    wire[2:0] spi_read_data_bytes_valid_x;
+    wire[31:0] spi_read_data_x;
+    reg        spi_enable_r;
+    wire       spi_ss_reduce_c;
+    reg[2:0]   spi_data_byte_writes_required_r;
+    wire[2:0]  spi_read_data_bytes_valid_x;
     
     assign spi_ss_c        = (ctrl_status_r[CS_SS_ACTIVE_HIGH]) ? ~spi_ss_r : spi_ss_r;
     assign spi_ss_reduce_c = ~&spi_ss_c;
@@ -86,15 +81,7 @@ module AHBspi (
         endcase
     end
     
-    always @(posedge HCLK) begin
-        read_data_d1_r <= read_data_r;
-        
-        if(~HRESETn) begin
-            read_data_d1_r <= 32'd0;
-        end
-    end
-    
-    assign HRDATA = read_data_d1_r;
+    assign HRDATA = read_data_r;
     
     always @(ctrl_status_r, HADDR_r) begin
         if((ctrl_status_r[CS_WDATA_VALID_BYTES_INDEX +: 3] <= 3'd4) & (HADDR_r[7:0] != SPI_RDATA_ADDR)) begin
@@ -124,6 +111,8 @@ module AHBspi (
         end
     end
     
+    assign ahb_read_spi_data_c = (read_r & HADDR_r[7:0] == SPI_RDATA_ADDR);
+    
     always @(posedge HCLK) begin
         reset_fill_level_r <= 1'b0;
         
@@ -140,40 +129,47 @@ module AHBspi (
             end
         end        
         TRANSACT : begin
-            // Logic for WDATA_FINIHED flag
+            // Logic for WDATA_FINISHED flag
             if(spi_data_byte_writes_required_r == 3'd0) begin
-                ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // Read has occurred, so reset the read flag
+                ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // Read has occurred, so reset the data_written flag
             end
             else if(spi_read_data_bytes_valid_x == spi_data_byte_writes_required_r) begin
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b1; // Have written down the number of bytes requested to be written
             end           
             
             // Logic for the number of valid bytes
-            if(read_r & HADDR_r == SPI_RDATA_ADDR) begin
+            // If reading the RDATA register, we must reset the number of bytes
+            // considered valid while SPI completes the rest of its 8-bit transfer
+            // May not necessarily have to make every SPI transaction a multiple of 8 bits,
+            // so this extra masking logic may be unnecessary
+            
+            
+            // Put RDATA_VALID high if have 4 bytes. Keep 
+            // high until read out, at which point, force low
+            // until num_bytes cycles            
+            if(spi_read_data_bytes_valid_x == 3'd4 & ~(ahb_read_spi_data_c | ~await_rdata_read_r)) begin
+               ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b1; 
+            end
+            else if(ahb_read_spi_data_c | ~await_rdata_read_r) begin            
+               ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b0; 
+            end
+            
+            if(ahb_read_spi_data_c & spi_read_data_bytes_valid_x == 3'd4) begin
+                await_rdata_read_r <= 1'b0;
+            end
+            else if(spi_read_data_bytes_valid_x != 3'd4) begin
+                await_rdata_read_r <= 1'b1;
+            end        
+           
+            if(~await_rdata_read_r) begin
+                ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= 3'd0;
+            end
+            else begin
+                ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= spi_read_data_bytes_valid_x;
+            end
+            
+            if(ahb_read_spi_data_c) begin
                 reset_fill_level_r <= 1'b1;
-                num_bytes_r        <= spi_read_data_bytes_valid_x;
-            end            
-            else if(spi_read_data_bytes_valid_x == num_bytes_r & num_bytes_r != 3'd0) begin
-                mask_fill_level_r <= 1'b1;
-            end
-            else begin
-                mask_fill_level_r <= 1'b0;
-                num_bytes_r       <= 3'd0;
-            end
-            
-            // Assign as normal
-            ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= spi_read_data_bytes_valid_x;
-            
-            // Logic for RDATA_READY flag
-            if (reset_fill_level_r | mask_fill_level_r) begin
-                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b0;
-                ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= 3'd0;//spi_read_data_bytes_valid_x;
-            end   
-            else if(spi_read_data_bytes_valid_x == 3'd4) begin
-                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b1;
-            end         
-            else begin
-                ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'b0;                 
             end
             
             // Update the read_data register
@@ -183,9 +179,8 @@ module AHBspi (
                 spi_state_r                         <= IDLE;
                 spi_enable_r                        <= 1'b0;
                 ctrl_status_r[CS_RDATA_READY_INDEX] <= 1'd0;
-                num_bytes_r                         <= 3'd0;
                 reset_fill_level_r                  <= 1'b0;
-                mask_fill_level_r                   <= 1'b0;
+                await_rdata_read_r                  <= 1'b1;
             end
         end        
         endcase
@@ -196,8 +191,7 @@ module AHBspi (
             spi_enable_r       <= 1'b0;
             ctrl_status_r      <= 32'd0;
             reset_fill_level_r <= 1'b0;
-            mask_fill_level_r  <= 1'b0;
-            num_bytes_r        <= 3'd0;
+            await_rdata_read_r <= 1'b1;
         end
     end
     

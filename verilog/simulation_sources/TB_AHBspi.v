@@ -52,7 +52,7 @@ module TB_AHBspi ();
         .spi_sclk_i(SPI_clk_x),   //id
         .spi_ss_i(SPI_ss_disp_c), // Display is slave index 0
         .spi_mosi_i(SPI_mosi_x),  //id
-        .spi_miso_o(SPI_miso_x),  //id
+        .spi_miso_o(),  //id
         .segment_o(),
         .digit_o()
     );
@@ -85,10 +85,12 @@ module TB_AHBspi ();
         // Set number of valid bytes in WDATA to 2, set slave select active high one-hot
         AHBwrite(WORD, 32'h52_00_00_00, 32'h00_00_20_40);
         AHBidle;
+        
         // Set SPI slave select all disabled except last (one-hot on write)
         // to select the display
         AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
         AHBidle;
+        
         // Write two bytes to the display
         AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_08);
         AHBidle;
@@ -97,32 +99,37 @@ module TB_AHBspi ();
         // down the two bytes
         while(~HRDATA[4]) begin             
             AHBread(WORD, 32'h0, 32'h0);
-            AHBidle;
-            #100;
+            //AHBidle;
+            //#100;
         end
         
         // Two bytes have been written, read the read_data to 
         // reset the write flag and read flag
         AHBread(WORD, 32'h00_00_00_0C, 32'h0); // Reset read flag
-        AHBidle;
-        #50
+        //AHBidle;
+        //#50
         
         // Read
         AHBread(WORD, 32'h0, 32'h0);
-        AHBidle;
-        #100;
+        //AHBidle;
+        //#100;
         
         // Read until buffer fills up with 4 bytes
         while(~HRDATA[0]) begin             
             AHBread(WORD, 32'h0, 32'h0);
-            AHBidle;
-            #100;
         end
         
         // Invalidate flag
         AHBread(WORD, 32'h00_00_00_0C, 32'h0); // Reset read flag
-        AHBidle;
-        #50
+        //AHBidle;
+        //#50
+        // Read
+        AHBread(WORD, 32'h0, 32'h0);
+        
+        // Read until buffer fills up with 4 bytes again
+        while(~HRDATA[0]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
         
         // Once the two bytes have been written, disable
         // the display slave select
@@ -139,7 +146,7 @@ module TB_AHBspi ();
     reg[5:0] count_r;    
     
     //always @(count_r) begin
-    //assign SPI_miso_x = data_test[count_r];
+    assign SPI_miso_x = data_test[count_r];
     //end
     
     always @(posedge SPI_clk_x) begin    
