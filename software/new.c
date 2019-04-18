@@ -89,8 +89,10 @@ void UART_ISR()
 void ADXL_ISR()
 {
     uint32_t   first_adxl_word;
+	uint32_t ctr=0;
 	volatile uint32_t test;
     uint32_t   second_adxl_word;
+	uint32_t bytea,byteb;
     uint16_t   adxl_x_data;
 	pt2NVIC->Disable	 = (1 << 2);
     g_data_ready_flag = 0x1;
@@ -98,12 +100,14 @@ void ADXL_ISR()
 	adxl_send_read_command(0x0E); //TODO do I need to send junk to wait?
 	while(!SPI_DATA_READY){}
 	first_adxl_word = spi_read_word();
-	while(!SPI_DATA_READY){}
-	spi_clear_ss();
-            second_adxl_word = spi_read_word();            
+	//while(!((pt2SPI->control >> 2) & 0x01)){}
+	//bytea = spi_read_word();		
+	while(!SPI_DATA_READY){ctr++;}
+            second_adxl_word = spi_read_word();
+	spi_clear_ss();            
 							adxl_x_data = (uint16_t)( ((first_adxl_word & 0xFF) << 8) | ((first_adxl_word >> 8) & 0xFF) ); //%TODO may change - see spec
 
-							printf("%08X %08X\r\n",first_adxl_word,second_adxl_word);
+							printf("word1 %08X bytea %08X word2 %08X ctr %d\r\n",first_adxl_word,bytea,second_adxl_word,ctr);
 }
 //////////////////////////////////////////////////////////////////
 // Software delay function
@@ -261,7 +265,7 @@ uint32_t adxl_read_register(uint8_t address)
 void adxl_init(void)
 {
     //write to 2A - need to set interrupts active high & map DATA_READY
-    adxl_send_write_command(0x2A,0x81);
+    adxl_send_write_command(0x2A,0x01);
 	  printf("reg2A: %08X\r\n",adxl_read_register(0x2A));
 	
     //write to 2C - measurement range, half bw and ODR
