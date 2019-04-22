@@ -3,7 +3,7 @@
 /* Author: Conor Dooley 31/03/2019                                       */
 /* Digital & Embedded Systems Assignment 3                               */
 /*************************************************************************/
-module Nexys4Display (
+module Nexys4DisplayTestTest (
     input   rst_low_i,
     input   block_clk_i,
     input   spi_sclk_i, //idle high, posedge active, < block_clk_i
@@ -73,7 +73,7 @@ module Nexys4Display (
     always @ (spi_ss_i, spi_rx_transfer_complete_r, spi_rx_bit_count_r)
     begin
         if (~spi_ss_i) spi_rx_bit_count_next_r = spi_rx_bit_count_r + 1'b1;
-        else           spi_rx_bit_count_next_r = 8'd0; //spi_rx_bit_count_r;
+        else           spi_rx_bit_count_next_r = 8'd0;//spi_rx_bit_count_r;
     end
 
     //is a transfer completed? if so set complete flag -> 16 bit transfers, 2^4 = 16 for bit select
@@ -159,11 +159,13 @@ module Nexys4Display (
 
     genvar digit_inc;
     generate
-        for (digit_inc = 1;digit_inc <= 8;digit_inc = digit_inc+1)
+        for (digit_inc = 1;digit_inc <= 6;digit_inc = digit_inc+1)
         begin: DIGITS
             assign display_value_c[4*digit_inc-1:4*(digit_inc-1)] = register_digit_r[digit_inc][3:0]; 
         end
     endgenerate
+    
+    assign display_value_c[31:24] = spi_rx_bit_count_r;
 
     assign display_radix_c  = register_digit_r[RADIX_REG];
     assign display_enable_c = register_digit_r[ENABLE_REG];

@@ -23,14 +23,15 @@ module Nexys4DisplayTestBench ();
         bits_to_send = 16;
         spi_ss       = 1'b0;
         
-        #200 clk_spi_x = 1'b0;
+        clk_spi_x = #200 1'b0;
         
         for(clock_inc=0;clock_inc<bits_to_send;clock_inc=clock_inc+1)
         begin
             #50  spi_data  = val_to_send[clock_inc];
-            #150 clk_spi_x = 1'b1; //send clock high            
-            #200 clk_spi_x = 1'b0; //send clock low
+            #150 clk_spi_x = 1'b1; //send clock high
+            if(clock_inc<bits_to_send-1) #200 clk_spi_x = 1'b0; //send clock low
         end
+        #10;
         spi_ss = 1'b1;        
     end
     endtask
@@ -54,7 +55,7 @@ module Nexys4DisplayTestBench ();
     end
     endtask
     
-    Nexys4Display dut (
+    Nexys4DisplayTestTest dut (
         .rst_low_i(rst_pbn),
         .block_clk_i(clk6m25_x),
         .spi_sclk_i(clk_spi_x),   //idle high, posedge active, < clock_5meg_i
@@ -77,12 +78,21 @@ module Nexys4DisplayTestBench ();
         rst_pbn = 1'b1;
         #100
         send_spi_message(16'b0001_0000_0000_1100);
+        #1000
         send_spi_message(16'h1_1_aa);
+        #1000
+        send_spi_message(16'h1_1_aa);
+        #1000
         send_spi_message(16'h1_2_bb);
+        #1000
         send_spi_message(16'h1_3_cc);
+        #1000
         send_spi_message(16'h1_4_dd);
+        #1000
         send_spi_message(16'h0_4_ff);
+        #1000
         send_spi_message(16'h1_ff_77);
+        #1000
         send_spi_message_noss(16'h1_1_ee);
         #300
         $stop;

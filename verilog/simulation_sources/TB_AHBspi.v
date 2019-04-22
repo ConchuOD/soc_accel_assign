@@ -46,7 +46,7 @@ module TB_AHBspi ();
         .SPI_CLK_o(SPI_clk_x)
         );
         
-    Nexys4Display dispTest(
+    Nexys4DisplayTestTest dispTest(
         .rst_low_i(HRESETn),
         .block_clk_i(block_clk),
         .spi_sclk_i(SPI_clk_x),   //id
@@ -92,7 +92,7 @@ module TB_AHBspi ();
         AHBidle;        
         
         // Write two bytes to the display
-        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_08);
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_13_08);
         AHBidle;
         
         // Read the control/status register until we have written
@@ -118,11 +118,180 @@ module TB_AHBspi ();
         
         
         // Write two bytes to the display
-        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_13_08);
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_02);
         AHBidle;
         
-        // Do something here...
+        // Read the control/status register until we have written
+        // down the two bytes
+        while(~HRDATA[4]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
         
+        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
+        AHBidle;
+        #200
+        
+        // Set SPI slave select all disabled 
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
+        
+        // Wait some time between writes        
+        #10000;
+        
+        // Set SPI slave select all disabled except last (one-hot on write)
+        // to select the display
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
+        AHBidle;
+        
+        
+        // Write two bytes to the display
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_14_01);
+        AHBidle;
+        
+        // Read the control/status register until we have written
+        // down the two bytes
+        while(~HRDATA[4]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
+        
+        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
+        AHBidle;
+        #200
+        
+        // Set SPI slave select all disabled 
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
+        
+        // Wait some time between writes        
+        #10000;
+        
+        // Set SPI slave select all disabled except last (one-hot on write)
+        // to select the display
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
+        AHBidle;
+        
+        
+        // Write two bytes to the display
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_02);
+        AHBidle;
+        
+        // Read the control/status register until we have written
+        // down the two bytes
+        while(~HRDATA[4]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
+        
+        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
+        AHBidle;
+        #200
+        
+        // Set SPI slave select all disabled 
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
+        
+        // Wait some time between writes        
+        #10000;
+        
+        // Set SPI slave select all disabled except last (one-hot on write)
+        // to select the display
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
+        AHBidle;
+        
+        
+        // Write two bytes to the display
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_01);
+        AHBidle;
+        
+        // Read the control/status register until we have written
+        // down the two bytes
+        while(~HRDATA[4]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
+        
+        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
+        AHBidle;
+        #200
+        
+        // Set SPI slave select all disabled 
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
+        
+        // Wait some time between writes        
+        #10000;
+        
+        // Set SPI slave select all disabled except last (one-hot on write)
+        // to select the display
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
+        AHBidle;
+        
+        
+        // Write two bytes to the display
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_03);
+        AHBidle;
+        
+        // Read the control/status register until we have written
+        // down the two bytes
+        while(~HRDATA[4]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
+        
+        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
+        AHBidle;
+        #200
+        
+        // Set SPI slave select all disabled 
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
+        
+        // Wait some time between writes        
+        #10000;
+        
+        // Set SPI slave select all disabled except last (one-hot on write)
+        // to select the display
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
+        AHBidle;
+        
+        
+        // Write two bytes to the display
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_02);
+        AHBidle;
+        
+        // Read the control/status register until we have written
+        // down the two bytes
+        while(~HRDATA[4]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
+        
+        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
+        AHBidle;
+        #200
+        
+        // Set SPI slave select all disabled 
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
+        
+        // Wait some time between writes        
+        #10000;
+        
+        // Set SPI slave select all disabled except last (one-hot on write)
+        // to select the display
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
+        AHBidle;
+        
+        
+        // Write two bytes to the display
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_0f);
+        AHBidle;
+
+        // Read the control/status register until we have written
+        // down the two bytes
+        while(~HRDATA[4]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
+        
+        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
+        AHBidle;
+        #200
+        
+        // Set SPI slave select all disabled 
+        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
+        
+        // Do something here...
+        $stop;
         
         /*
         // Read the control/status register until we have written

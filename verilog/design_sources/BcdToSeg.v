@@ -38,12 +38,12 @@ module BcdToSeg (
          4'h7:  pattern = 7'b0001111;
          4'h8:  pattern = 7'b0000000;
          4'h9:  pattern = 7'b0000100;
-         4'hA:  pattern = 7'b1111111;
-         4'hB:  pattern = 7'b1111111;
-         4'hC:  pattern = 7'b1111111;
-         4'hD:  pattern = 7'b1111111;
-         4'hE:  pattern = 7'b1111111;
-         4'hF:  pattern = 7'b1111111;  // display F
+         4'hA:  pattern = 7'b1111110; //display minus
+         4'hB:  pattern = 7'b1111111; //display blank
+         4'hC:  pattern = 7'b1111111; //display blank
+         4'hD:  pattern = 7'b1111111; //display blank
+         4'hE:  pattern = 7'b1111111; //display blank
+         4'hF:  pattern = 7'b1111111; //display blank
       endcase  // no need for default, as all possibilities covered
 
 endmodule 

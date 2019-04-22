@@ -11,15 +11,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="0fs"></ZoomStartTime>
-      <ZoomEndTime time="53310000000fs"></ZoomEndTime>
-      <Cursor1Time time="259583000fs"></Cursor1Time>
+      <ZoomStartTime time="22290000000fs"></ZoomStartTime>
+      <ZoomEndTime time="35630000001fs"></ZoomEndTime>
+      <Cursor1Time time="23410000000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="195"></NameColumnWidth>
-      <ValueColumnWidth column_width="90"></ValueColumnWidth>
+      <ValueColumnWidth column_width="86"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="46" />
+   <WVObjectSize size="47" />
    <wvobject fp_name="/Nexys4DisplayTestBench/rst_pbn" type="logic">
       <obj_property name="ElementShortName">rst_pbn</obj_property>
       <obj_property name="ObjectShortName">rst_pbn</obj_property>
@@ -60,14 +60,20 @@
       <obj_property name="ElementShortName">spi_miso_o</obj_property>
       <obj_property name="ObjectShortName">spi_miso_o</obj_property>
    </wvobject>
-   <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_clk_c" type="logic">
-      <obj_property name="ElementShortName">spi_rx_clk_c</obj_property>
-      <obj_property name="ObjectShortName">spi_rx_clk_c</obj_property>
+   <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_shiftreg_r" type="array">
+      <obj_property name="ElementShortName">spi_rx_shiftreg_r[7:0]</obj_property>
+      <obj_property name="ObjectShortName">spi_rx_shiftreg_r[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_shiftreg_r" type="array">
       <obj_property name="ElementShortName">spi_rx_shiftreg_r[7:0]</obj_property>
       <obj_property name="ObjectShortName">spi_rx_shiftreg_r[7:0]</obj_property>
       <obj_property name="Radix">BINARYRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_shiftreg_next_c" type="array">
+      <obj_property name="ElementShortName">spi_rx_shiftreg_next_c[7:0]</obj_property>
+      <obj_property name="ObjectShortName">spi_rx_shiftreg_next_c[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/Nexys4DisplayTestBench/dut/spi_rx_shiftreg_next_c" type="array">
       <obj_property name="ElementShortName">spi_rx_shiftreg_next_c[7:0]</obj_property>
