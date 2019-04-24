@@ -64,10 +64,14 @@ void display_send_value(uint8_t digit_offset, int16_t value_to_display)
 
     for(inc = 0; inc < DISPLAY_DIGITS_PER_VAR; inc++)
     {
+			  if(address == 9)
+				{
+					printf("error\r\n");
+				}
         address = digit_offset + inc + 1;
         character = *(digits+inc);
         display_send_write_data(address, character);
-        wait_n_loops(1);
+        //wait_n_loops(333);
     }
 }
 void display_send_led_value(int16_t value_to_display)
