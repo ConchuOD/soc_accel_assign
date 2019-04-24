@@ -22,6 +22,7 @@ module Nexys4Display (
     localparam NUM_REGISTERS = 10; //reg0 is enable, 1-8 are digits, 9 is radices
     localparam ENABLE_REG    = 0;
     localparam RADIX_REG     = 9;
+    localparam RX_CNT_WIDTH  = 5;
 
     reg  [BYTE_WIDTH-1:0] register_digit_r      [NUM_REGISTERS-1:0];
     reg  [BYTE_WIDTH-1:0] register_digit_next_r [NUM_REGISTERS-1:0];
@@ -57,7 +58,7 @@ module Nexys4Display (
     //spi receiver implemented by shift register
     always @ (posedge spi_sclk_i or negedge rst_low_i)
     begin
-        if (~rst_low_i) spi_rx_shiftreg_r <= 8'd0;
+        if (~rst_low_i) spi_rx_shiftreg_r <= {(BYTE_WIDTH){1'b0}};
         else            spi_rx_shiftreg_r <= spi_rx_shiftreg_next_c;
     end
 
@@ -66,14 +67,14 @@ module Nexys4Display (
     //count the number of bits received
     always @ (posedge spi_sclk_i or negedge rst_low_i or posedge spi_rx_transfer_complete_r)
     begin
-        if (~rst_low_i | spi_rx_transfer_complete_r) spi_rx_bit_count_r <= 5'd0;
+        if (~rst_low_i | spi_rx_transfer_complete_r) spi_rx_bit_count_r <= {(RX_CNT_WIDTH){1'b0}};
         else             spi_rx_bit_count_r <= spi_rx_bit_count_next_r;
     end
 
     always @ (spi_ss_i, spi_rx_transfer_complete_r, spi_rx_bit_count_r)
     begin
         if (~spi_ss_i) spi_rx_bit_count_next_r = spi_rx_bit_count_r + 1'b1;
-        else           spi_rx_bit_count_next_r = 8'd0; //spi_rx_bit_count_r;
+        else           spi_rx_bit_count_next_r = {(BYTE_WIDTH){1'b0}};
     end
 
     //is a transfer completed? if so set complete flag -> 16 bit transfers, 2^4 = 16 for bit select
@@ -90,8 +91,8 @@ module Nexys4Display (
     begin
         if (~rst_low_i)
         begin
-            spi_rx_u_byte_r <= 8'd0;
-            spi_rx_l_byte_r <= 8'd0;
+            spi_rx_u_byte_r <= {(BYTE_WIDTH){1'b0}};
+            spi_rx_l_byte_r <= {(BYTE_WIDTH){1'b0}};
         end
         else if (spi_rx_bit_count_r == 8)
         begin
