@@ -1,0 +1,130 @@
+\documentclass[11pt,british]{report}
+\renewcommand{\rmdefault}{ptm}
+\renewcommand{\familydefault}{\rmdefault}
+%formatting packages
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage[a4paper]{geometry}
+\geometry{verbose,tmargin=2.9cm,bmargin=2.9cm,lmargin=3.5cm,rmargin=2.3cm}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\setcounter{secnumdepth}{3}
+\usepackage[british]{babel}
+\usepackage{booktabs}
+\usepackage{array,multirow}
+\usepackage{subfig}
+\usepackage[explicit]{titlesec}
+\usepackage{adjustbox}
+\usepackage{cite}
+\usepackage{pdfpages}
+\usepackage{standalone}
+\usepackage[toc,page]{appendix}
+\usepackage{listings}
+\usepackage{setspace}
+\usepackage{acro}
+\usepackage{etoolbox}
+
+%%maths
+\usepackage{units}
+\usepackage{siunitx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+%\usepackage{commath}
+\usepackage{cancel}
+\usepackage{gensymb}
+\usepackage{esint}
+\usepackage{mdsymbol}
+%\usepackage{eurosym} 
+%\usepackage{wasysym}
+
+%%figures
+\usepackage{graphicx}
+\usepackage{esvect}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{placeins}
+
+%\usepackage{tikz}
+
+\usepackage[
+	unicode=true,pdfusetitle,
+	bookmarks=true,bookmarksnumbered=false,bookmarksopen=false,
+	breaklinks=true,pdfborder={0 0 0},backref=page,colorlinks=false
+	]{hyperref}
+
+\makeatletter
+\lst@InstallKeywords k{attributes}{attributestyle}\slshape{attributestyle}{}ld
+\makeatother
+\makeatletter
+\lst@InstallKeywords k{modules}{modulestyle}\slshape{modulestyle}{}ld
+\makeatother
+
+\lstset{language=C,breaklines=true,
+	basicstyle=\fontsize{11}{13}\selectfont\ttfamily,
+	keywordstyle=\color{blue}\ttfamily,
+	stringstyle=\color{red}\ttfamily,
+	commentstyle=\color{green}\ttfamily,
+	morecomment=[l][\color{magenta}]{\#},
+	morekeywords={uint8\_t, uint16\_t, uint32\_t, interrupt},
+	moreattributes={}, % etc...
+	attributestyle = \bfseries\color{mymauve} % (for instance)
+}
+
+\lstdefinestyle{verilog-style}
+{
+	language=Verilog,
+	basicstyle=\footnotesize,
+	%breakatwhitespace=true,
+	breaklines=true,
+	keywordstyle=\color{vblue},
+	identifierstyle=\color{black},
+	commentstyle=\color{vgreen},
+	attributestyle = \color{vorange},
+	modulestyle = \color{vred},
+	numbers=none,
+	tabsize=4,
+	lineskip=-0.7ex,
+	showspaces=false,
+	moreattributes={}, % etc...
+	morekeywords={},
+	moremodules={}
+}
+
+
+\definecolor{vgreen}{RGB}{104,180,104}
+\definecolor{vblue}{RGB}{49,49,255}
+\definecolor{vorange}{RGB}{255,143,102}
+\definecolor{vred}{RGB}{119,31,31}
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+
+\begin{document}
+\section*{Introduction}
+In this assignment, the objective was to design the peripheral devices and write code to display the acceleration information from the 3-axis in some manner. The platform on which this assignment was completed was a Nexys4 Development board, which features a Xilinx Artix-7 FPGA and an Analog Devices ADXL362 accelerometer. Also provided were a ``soft'' ARM Cortex M0 microcontroller core alongside UART, RAM, ROM and GPIO peripherals, each using the AHB Lite bus. The minimum specification required the display of a single axis on the LEDs, but in our case we chose to read back information from all three axes. X- \& z-axis information displayed on the 7-segment display and, as it lay in the same plane, the y-axis information on the LEDs. 
+
+\section*{High Level Design}
+Regardless of the choices made regarding the assignment's direction, an SPI interface of some type is required to interface with the ADXL362 accelerometer. Ideally, a SPI master peripheral would be implemented in hardware to avoid blocking program execution during transfers, and as it has the potential to achieve a better grade. As the program would be running on an ARM Cortex microcontroller core, this peripheral must also implement an AHB Lite interface on the processor side. From the introductory lab session, we had already connected the LEDs to the GPIO peripheral so no additional hardware would be required. However, we also wished to display the acceleration on the 7-segment displays present on the board which would require additional hardware to control. All calculations relating to the acceleration values and interfacing with various peripherals were to be handled in software running on the ARM core.
+
+It was decided that as I had done plenty of Verilog for my project, that Andrew would implement the SPI master peripheral to gain more experience with the language, and I would work primarily on the software and display side of things.
+
+\section*{Design}
+\subsection*{SPI Master Peripheral}
+\subsection*{7-Segment Display}
+\subsection*{ADXL Interaction}
+\subsection*{Software}
+
+\section*{Implementation}
+
+\section*{Testing}
+
+\section*{Measurements}
+
+\section*{Flaws}
+
+\section*{Board Configuration}
+
+\end{document}
