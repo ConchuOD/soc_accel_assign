@@ -6,7 +6,7 @@
 module Nexys4Display (
     input   rst_low_i,
     input   block_clk_i,
-    input   spi_sclk_i, //idle high, posedge active, < block_clk_i
+    input   spi_sclk_i, //idle low, posedge active, < 2.5 MHz
     input   spi_ss_i,   //idle high
     input   spi_mosi_i, //idle high
     output  spi_miso_o, //idle high
