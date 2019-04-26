@@ -24,29 +24,29 @@ module Nexys4Display (
     localparam RADIX_REG     = 9;
     localparam RX_CNT_WIDTH  = 5;
 
-    reg  [BYTE_WIDTH-1:0] register_digit_r      [NUM_REGISTERS-1:0];
-    reg  [BYTE_WIDTH-1:0] register_digit_next_r [NUM_REGISTERS-1:0];
+    reg  [BYTE_WIDTH-1:0]   register_digit_r      [NUM_REGISTERS-1:0];
+    reg  [BYTE_WIDTH-1:0]   register_digit_next_r [NUM_REGISTERS-1:0];
 
-    wire                  spi_rx_clk;
+    wire                    spi_rx_clk;
 
-    reg  [BYTE_WIDTH-1:0] spi_rx_shiftreg_r;
-    wire [BYTE_WIDTH-1:0] spi_rx_shiftreg_next_c;
-    reg  [BYTE_WIDTH-1:0] spi_rx_u_byte_r;
-    reg  [BYTE_WIDTH-1:0] spi_rx_l_byte_r;
+    reg  [BYTE_WIDTH-1:0]   spi_rx_shiftreg_r;
+    wire [BYTE_WIDTH-1:0]   spi_rx_shiftreg_next_c;
+    reg  [BYTE_WIDTH-1:0]   spi_rx_u_byte_r;
+    reg  [BYTE_WIDTH-1:0]   spi_rx_l_byte_r;
 
-    reg  [4:0]            spi_rx_bit_count_r;
-    reg  [4:0]            spi_rx_bit_count_next_r;
-    reg                   spi_rx_transfer_complete_r;
-    wire                  spi_rx_transfer_complete_next_c;
+    reg  [RX_CNT_WIDTH-1:0] spi_rx_bit_count_r;
+    reg  [RX_CNT_WIDTH-1:0] spi_rx_bit_count_next_r;
+    reg                     spi_rx_transfer_complete_r;
+    wire                    spi_rx_transfer_complete_next_c;
 
-    reg  [3:0]            rx_address_r;
-    wire [3:0]            rx_command_c;
-    reg  [BYTE_WIDTH-1:0] rx_value_r;
+    reg  [3:0]              rx_address_r;
+    wire [3:0]              rx_command_c;
+    reg  [BYTE_WIDTH-1:0]   rx_value_r;
 
-    wire [31:0]           display_value_c;
-    wire [BYTE_WIDTH-1:0] display_radix_c;
+    wire [31:0]             display_value_c;
+    wire [BYTE_WIDTH-1:0]   display_radix_c;
 
-    wire [BYTE_WIDTH-1:0] display_enable_c;
+    wire [BYTE_WIDTH-1:0]   display_enable_c;
 
     /*************************************************************************/
     /* SPI Receiver                                                          */
@@ -74,17 +74,17 @@ module Nexys4Display (
     always @ (spi_ss_i, spi_rx_transfer_complete_r, spi_rx_bit_count_r)
     begin
         if (~spi_ss_i) spi_rx_bit_count_next_r = spi_rx_bit_count_r + 1'b1;
-        else           spi_rx_bit_count_next_r = {(BYTE_WIDTH){1'b0}};
+        else           spi_rx_bit_count_next_r = {(RX_CNT_WIDTH){1'b0}};
     end
 
     //is a transfer completed? if so set complete flag -> 16 bit transfers, 2^4 = 16 for bit select
-    always @ (posedge spi_rx_clk or negedge rst_low_i)
+    always @ (posedge block_clk_i or negedge rst_low_i)
     begin
         if (~rst_low_i) spi_rx_transfer_complete_r <= 1'd0;
         else            spi_rx_transfer_complete_r <= spi_rx_transfer_complete_next_c;   
     end
 
-    assign spi_rx_transfer_complete_next_c = spi_rx_bit_count_next_r[4];
+    assign spi_rx_transfer_complete_next_c = spi_rx_bit_count_r[4]; //TODO reduction &
 
     //is a byte completed? if so read it out -> 16 bit transfers therefore @ 8 & 16 
     always @ (posedge block_clk_i or negedge rst_low_i)

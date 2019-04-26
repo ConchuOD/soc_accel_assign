@@ -21,7 +21,7 @@ module SPIMasterControl(
 );
 
     localparam IDLE = 1'b0, SHIFTING = 1'b1;
-    localparam SPI_CLOCK_IDLE = 1'b1;
+    localparam SPI_CLOCK_IDLE = 1'b0;
 
     reg[4:0] count_r;
     reg spi_clk_waiting_r;
