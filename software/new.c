@@ -72,7 +72,7 @@ int main(void) {
     
     for(;/*ever*/;)
     {
-        //__wfi(); // use sleep somehow TODO
+        __wfi(); // use sleep somehow TODO
         if(g_data_ready_flag) 
         {
             g_data_ready_flag = 0;

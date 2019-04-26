@@ -9,6 +9,7 @@
 \usepackage{esint}
 \usepackage{mdsymbol}
 \usepackage{esvect} 
+\usepackage{siunitx} 
 %\usepackage{lipsum}
 \usepackage{hhline}
 \usepackage{eurosym}
@@ -26,9 +27,14 @@
 \usepackage{float}
 \usepackage{caption}
 \usepackage{afterpage}
+
 \makeatletter
 \lst@InstallKeywords k{attributes}{attributestyle}\slshape{attributestyle}{}ld
 \makeatother
+\makeatletter
+\lst@InstallKeywords k{modules}{modulestyle}\slshape{modulestyle}{}ld
+\makeatother
+
 \lstset{language=C,breaklines=true,
 	basicstyle=\fontsize{11}{13}\selectfont\ttfamily,
 	keywordstyle=\color{blue}\ttfamily,
@@ -36,25 +42,78 @@
 	commentstyle=\color{green}\ttfamily,
 	morecomment=[l][\color{magenta}]{\#},
 	morekeywords={uint8\_t, uint16\_t, uint32\_t, interrupt},
-	moreattributes={ISPI, SPIDAT, CS, T0\_OVERFLOW\_MAX, TH1, TH0, TL1, TL0, EDGE_VALUE}, % etc...
+	moreattributes={}, % etc...
 	attributestyle = \bfseries\color{mymauve} % (for instance)
 }
 
+\lstdefinestyle{verilog-style}
+{
+	language=Verilog,
+	basicstyle=\footnotesize,
+	%breakatwhitespace=true,
+	breaklines=true,
+	keywordstyle=\color{vblue},
+	identifierstyle=\color{black},
+	commentstyle=\color{vgreen},
+	attributestyle = \color{vorange},
+	modulestyle = \color{vred},
+	numbers=none,
+	tabsize=4,
+	lineskip=-0.7ex,
+	showspaces=false,
+	moreattributes={}, % etc...
+	morekeywords={},
+	moremodules={}
+}
+
+
+\definecolor{vgreen}{RGB}{104,180,104}
+\definecolor{vblue}{RGB}{49,49,255}
+\definecolor{vorange}{RGB}{255,143,102}
+\definecolor{vred}{RGB}{119,31,31}
 \definecolor{mygreen}{rgb}{0,0.6,0}
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
+
 \begin{document}
 \title{7-Segment SPI Slave Display}
 \author{Conor Dooley}
 \maketitle
+
+\section*{Verilog Interface}
+\begin{lstlisting}[style={verilog-style}]
+	module Nexys4Display (
+    input   rst_low_i,
+    input   block_clk_i,
+    input   spi_sclk_i, //idle low, posedge active, < 2.5 MHz
+    input   spi_ss_i,   //idle high
+    input   spi_mosi_i, //idle high
+    output  spi_miso_o, //idle high
+    output  [7:0] segment_o, 
+    output  [7:0] digit_o
+    );
+\end{lstlisting}
+
 \section*{Display Behaviour}
-The display has 10 8-bit registers to control which digits appear on the screen. Register 0 acts as a bitmask to control which digits of the 7-Segment display are enabled. Registers 1 through 8 contain the value to display in the corresponding location, with index 1 appearing at the right hand side of the board and index 8 on the far left. Register 9 will control the radix point. These registers can be written to via SPI and at startup all will contain zero.\\
-Each bit in Register 0 and 9 are active high. Writing all zeros to these registers will disable all digits or radices respectively.
-Registers 1 through 8 expect an 8 bit unsigned integer of which only the lower 4 bits will be used. The value will be automatically decoded into the appropriate segments.
+The display has 10 8-bit registers to control which digits appear on the screen. Register 0 acts as a bitmask to control which digits of the 7-Segment display are enabled. Registers 1 through 8 contain the value to display in the corresponding location, with index 1 appearing at the right hand side of the board and index 8 on the far left. Register 9 controls the radix point. These registers can be written to via SPI and at startup all will contain zero.\\
+Each bit in Register 0 and 9 is active high. Writing all zeros to these registers will disable all digits or radices respectively, as will be the case at start-up.
+The segments of the display are not controlled by programmer directly, but rather tells the display which number to display in a given digit by writing to the appropriate register. The display then converts the value contained in the register to segments required to display it. Registers 1 through 8 are those that control the digits, and in accordance with the other registers are also 8 bits wide. To set the digit, an unsigned integer should be written to the relevant address. Of these 8 bits, only the lower 4 bits are used to compute the digit. The state of the upper bits is ignored. Table \ref{table:decode} shows how each register value is interpreted.
+\begin{table}[!h]
+	\begin{center} 
+		\begin{tabular}{c|c}
+			Register Value (uint8\_t) & Digit \\
+			$0\rightarrow 9$ & $0\rightarrow 9$ \\	
+			$10$ & Minus Sign \\	
+			$11\rightarrow 15$ & Blank \\			
+		\end{tabular}
+	\end{center}
+	\caption{Segment Decoding}
+	\label{table:decode}
+\end{table}
+
 \section*{SPI Behaviour}
-%TODO maximum permissable frequency
-The display can be controlled over SPI with the signals \texttt{spi\_sclk\_i}, \texttt{spi\_ss\_i} and \texttt{spi\_mosi\_i}, \texttt{spi\_miso\_o} all of which are idle high. The data is clocked on the positive edge of \texttt{spi\_sclk\_i}. The maximum transfer frequency is not yet established but the display is clocked at 5 MHz so the recommended maximum SPI clock is 25 MHz.\\
-Each transaction is 16 bits long, which is transferred in two 8 bit sections. The upper byte is sent first and each byte is MSB first. The 16 bit long message is broken up as follows:
+The display is be controlled over SPI with the signals \texttt{spi\_sclk\_i}, \texttt{spi\_ss\_i} and \texttt{spi\_mosi\_i}, \texttt{spi\_miso\_o} all of which are idle high. The data is clocked on the positive edge of \texttt{spi\_sclk\_i}. The display is clocked at $6.25~\si{\mega\hertz}$. The maximum SPI clock frequency is $2.5~\si{\mega\hertz}$.\\
+The display implements a 16 bit long transation, containing addressing and command information as well as the register value. Transfers are expected to be upper byte first, MSB first. There is no ability to reconfigure this. The 16 bit long message is broken up as follows:
 \begin{table}[!h]
 	\begin{center} 
 		\begin{tabular}{|c|c|c|c| c|c|c|c| c|c|c|c| c|c|c|c|}
@@ -63,8 +122,6 @@ Each transaction is 16 bits long, which is transferred in two 8 bit sections. Th
 		\end{tabular}
 	\end{center}
 \end{table}
-The only command that is currently valid is the write command of \texttt{0001}. The address is the 4 bit unsigned integer representation of the register number.
-
-
+Only one command is implemented, \texttt{0x1}, which serves as the write command. This allows the capabilty of the device to be extended later without impacting already legact implemenations. The address portion of the message is the 4 bit unsigned integer representation of the register number.
 	
 \end{document}

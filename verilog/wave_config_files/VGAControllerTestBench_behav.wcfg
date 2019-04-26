@@ -12,84 +12,87 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0fs"></ZoomStartTime>
-      <ZoomEndTime time="690000001fs"></ZoomEndTime>
-      <Cursor1Time time="348000000fs"></Cursor1Time>
+      <ZoomEndTime time="77950000000001fs"></ZoomEndTime>
+      <Cursor1Time time="32704060000000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="195"></NameColumnWidth>
-      <ValueColumnWidth column_width="90"></ValueColumnWidth>
+      <ValueColumnWidth column_width="82"></ValueColumnWidth>
    </column_width_setting>
    <WVObjectSize size="18" />
-   <wvobject fp_name="/VGAControllerTestBench/dut/rst_low_i" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/rst_low_i">
       <obj_property name="ElementShortName">rst_low_i</obj_property>
       <obj_property name="ObjectShortName">rst_low_i</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/block_clk_i" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/block_clk_i">
       <obj_property name="ElementShortName">block_clk_i</obj_property>
       <obj_property name="ObjectShortName">block_clk_i</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/h_sync_o" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/h_sync_o">
       <obj_property name="ElementShortName">h_sync_o</obj_property>
       <obj_property name="ObjectShortName">h_sync_o</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/v_sync_o" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/v_sync_o">
       <obj_property name="ElementShortName">v_sync_o</obj_property>
       <obj_property name="ObjectShortName">v_sync_o</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/horz_count_r" type="array">
+   <wvobject type="array" fp_name="/VGAControllerTestBench/dut/horz_count_r">
       <obj_property name="ElementShortName">horz_count_r[9:0]</obj_property>
       <obj_property name="ObjectShortName">horz_count_r[9:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/horz_count_next_r" type="array">
+   <wvobject type="array" fp_name="/VGAControllerTestBench/dut/horz_count_next_r">
       <obj_property name="ElementShortName">horz_count_next_r[9:0]</obj_property>
       <obj_property name="ObjectShortName">horz_count_next_r[9:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/horz_enable_c" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/horz_enable_c">
       <obj_property name="ElementShortName">horz_enable_c</obj_property>
       <obj_property name="ObjectShortName">horz_enable_c</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/horz_zero_detect_c" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/horz_zero_detect_c">
       <obj_property name="ElementShortName">horz_zero_detect_c</obj_property>
       <obj_property name="ObjectShortName">horz_zero_detect_c</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/horz_3us84_detect_c" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/horz_3us84_detect_c">
       <obj_property name="ElementShortName">horz_3us84_detect_c</obj_property>
       <obj_property name="ObjectShortName">horz_3us84_detect_c</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/vert_count_r" type="array">
-      <obj_property name="ElementShortName">vert_count_r[17:0]</obj_property>
-      <obj_property name="ObjectShortName">vert_count_r[17:0]</obj_property>
+   <wvobject type="array" fp_name="/VGAControllerTestBench/dut/vert_count_r">
+      <obj_property name="ElementShortName">vert_count_r[9:0]</obj_property>
+      <obj_property name="ObjectShortName">vert_count_r[9:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/vert_count_next_r" type="array">
-      <obj_property name="ElementShortName">vert_count_next_r[17:0]</obj_property>
-      <obj_property name="ObjectShortName">vert_count_next_r[17:0]</obj_property>
+   <wvobject type="array" fp_name="/VGAControllerTestBench/dut/vert_count_next_r">
+      <obj_property name="ElementShortName">vert_count_next_r[9:0]</obj_property>
+      <obj_property name="ObjectShortName">vert_count_next_r[9:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/vert_enable_c" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/vert_enable_c">
       <obj_property name="ElementShortName">vert_enable_c</obj_property>
       <obj_property name="ObjectShortName">vert_enable_c</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/vert_zero_detect_c" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/vert_zero_detect_c">
       <obj_property name="ElementShortName">vert_zero_detect_c</obj_property>
       <obj_property name="ObjectShortName">vert_zero_detect_c</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/vert_64us_detect_c" type="logic">
+   <wvobject type="logic" fp_name="/VGAControllerTestBench/dut/vert_64us_detect_c">
       <obj_property name="ElementShortName">vert_64us_detect_c</obj_property>
       <obj_property name="ObjectShortName">vert_64us_detect_c</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/HORZ_COUNT_WIDTH" type="array">
+   <wvobject type="array" fp_name="/VGAControllerTestBench/dut/HORZ_COUNT_WIDTH">
       <obj_property name="ElementShortName">HORZ_COUNT_WIDTH[31:0]</obj_property>
       <obj_property name="ObjectShortName">HORZ_COUNT_WIDTH[31:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/VERT_COUNT_WIDTH" type="array">
+   <wvobject type="array" fp_name="/VGAControllerTestBench/dut/VERT_COUNT_WIDTH">
       <obj_property name="ElementShortName">VERT_COUNT_WIDTH[31:0]</obj_property>
       <obj_property name="ObjectShortName">VERT_COUNT_WIDTH[31:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/HORZ_COUNT_3US84" type="array">
+   <wvobject type="array" fp_name="/VGAControllerTestBench/dut/HORZ_COUNT_3US84">
       <obj_property name="ElementShortName">HORZ_COUNT_3US84[9:0]</obj_property>
       <obj_property name="ObjectShortName">HORZ_COUNT_3US84[9:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/VGAControllerTestBench/dut/VERT_COUNT_64US" type="array">
-      <obj_property name="ElementShortName">VERT_COUNT_64US[17:0]</obj_property>
-      <obj_property name="ObjectShortName">VERT_COUNT_64US[17:0]</obj_property>
+   <wvobject type="array" fp_name="/VGAControllerTestBench/dut/VERT_COUNT_64US">
+      <obj_property name="ElementShortName">VERT_COUNT_64US[9:0]</obj_property>
+      <obj_property name="ObjectShortName">VERT_COUNT_64US[9:0]</obj_property>
    </wvobject>
 </wave_config>

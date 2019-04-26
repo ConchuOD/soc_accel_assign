@@ -10,14 +10,14 @@ volatile uint32_t g_second_adxl_word = 0;
 //////////////////////////////////////////////////////////////////
 void ADXL_ISR(void)
 {
-    pt2NVIC->Disable	 = (1 << NVIC_ADXL_BIT_POS);
+    //pt2NVIC->Disable	 = (1 << NVIC_ADXL_BIT_POS);
     g_data_ready_flag    = 1;
     adxl_send_read_command(ADXL_DATA_START);
     while(!SPI_DATA_READY){}
     g_first_adxl_word = spi_read_word();
     while(!SPI_DATA_READY){}
-    g_second_adxl_word = spi_read_word();
-    spi_clear_ss();            
+    spi_clear_ss();    
+    g_second_adxl_word = spi_read_word();        
 }
 
 //ADXL362
