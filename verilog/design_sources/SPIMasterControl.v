@@ -14,7 +14,8 @@ module SPIMasterControl(
     output wire        spi_clk_o,
     output wire [31:0] read_data_o,
     output wire [ 2:0] read_data_bytes_valid_o,
-    output wire        clear_shift_reg_o
+    output wire        clear_shift_reg_o,
+    output wire        ready_o
     // Need parameter to indicate SPI clock idle value?
     // Need parameter to indicate SPI clock frequency?
 );
@@ -31,7 +32,7 @@ module SPIMasterControl(
     reg ctrl_state_r;
     reg loading_r, shifting_r;
     reg[3:0] bit_count_r;
-    reg[2:0] bytes_remaining_r;
+    reg[2:0] bytes_to_write_r, byte_index_r;
     reg[2:0] read_fill_level_bytes_r, read_fill_level_bytes_out_r;
     reg new_byte_r; 
     reg reset_fill_level_r;
@@ -66,17 +67,22 @@ module SPIMasterControl(
         end
     end
     
+    assign ready_o = (ctrl_state_r == IDLE & read_fill_level_bytes_r == 3'd0);
+    
     always @(negedge spi_clk_waiting_r) begin 
         new_byte_r <= 1'b0;  // Only allow high for one clock cycle
+        
         case (ctrl_state_r)
         IDLE : begin
+            read_fill_level_bytes_r <= 3'd0; // Keep valid for one cycle after being in shifting mode
+            
             if(enable_i) begin
                 ctrl_state_r                <= SHIFTING;
                 write_data_r                <= write_data_i;
                 loading_r                   <= 1'b1;
-                read_fill_level_bytes_r     <= 3'd0;
                 shift_reg_byte_o            <= write_data_i[8*(write_data_bytes_valid_i-3'd1) +: 8];
-                bytes_remaining_r           <= write_data_bytes_valid_i;// - 3'd1;
+                bytes_to_write_r            <= write_data_bytes_valid_i;
+                byte_index_r                <= (write_data_bytes_valid_i > 3'd1)? write_data_bytes_valid_i - 3'd2 : 3'd0;
                 bit_count_r                 <= 4'd7;
             end
         end
@@ -84,26 +90,28 @@ module SPIMasterControl(
         SHIFTING : begin
             // Quit straight away if enable_i has gone low
             if(~enable_i) begin 
-                ctrl_state_r                <= IDLE;
-                bit_count_r                 <= 4'd0;
-                bytes_remaining_r           <= 3'd0;
-                read_fill_level_bytes_r     <= 3'd0;
-                new_byte_r                  <= 1'b0;
-                loading_r                   <= 1'b0;
-                shifting_r                  <= 1'b0;
+                ctrl_state_r             <= IDLE;
+                bit_count_r              <= 4'd7;
+                bytes_to_write_r         <= 3'd0;
+                byte_index_r             <= 3'd0;
+                read_fill_level_bytes_r  <= 3'd0;
+                new_byte_r               <= 1'b0;
+                loading_r                <= 1'b0;
+                shifting_r               <= 1'b0;
             end
             else begin            
                 loading_r   <= 1'b0;
                 shifting_r  <= 1'b1;
                 
-                if(bytes_remaining_r > 3'd0) begin
+                if(bytes_to_write_r > 3'd0) begin
                     // Continue transacting
-                    shift_reg_bit_o <= write_data_r[8*(bytes_remaining_r-3'd1) + bit_count_r];                    
+                    shift_reg_bit_o <= write_data_r[8*(byte_index_r) + bit_count_r];                    
                     bit_count_r     <= bit_count_r - 4'd1;
                 
                     if(bit_count_r == 4'd0) begin 
                         bit_count_r             <= 4'd7;                
-                        bytes_remaining_r       <= bytes_remaining_r - 3'd1;
+                        byte_index_r            <= (byte_index_r > 3'd0)? byte_index_r - 3'd1 : 3'd0;
+                        bytes_to_write_r        <= bytes_to_write_r - 3'd1;
                         new_byte_r              <= 1'b1;                        
                         read_fill_level_bytes_r <= read_fill_level_bytes_r + 3'b1;
                     end
@@ -112,8 +120,9 @@ module SPIMasterControl(
                     // We have sent the desired number of bytes for this SPI transaction,
                     // so terminate
                     ctrl_state_r                <= IDLE;
-                    bit_count_r                 <= 4'd0;
-                    bytes_remaining_r           <= 3'd0;
+                    bit_count_r                 <= 4'd7;
+                    bytes_to_write_r            <= 3'd0;
+                    byte_index_r                <= 3'd0;
                     loading_r                   <= 1'b0;
                     shifting_r                  <= 1'b0;
                 end     
@@ -124,7 +133,8 @@ module SPIMasterControl(
         if(~rstn_i) begin
             ctrl_state_r                <= IDLE;            
             bit_count_r                 <= 4'd7;
-            bytes_remaining_r           <= 3'd0;
+            bytes_to_write_r            <= 3'd0;
+            byte_index_r                <= 3'd0;
             read_fill_level_bytes_r     <= 3'd0;
             reset_fill_level_r          <= 1'b0;
             new_byte_r                  <= 1'b0;
@@ -138,6 +148,9 @@ module SPIMasterControl(
             read_data_r[8*read_fill_index_c +: 8] <= read_data_i;
             read_fill_level_bytes_out_r           <= read_fill_level_bytes_r;
         end 
+        else if(ctrl_state_r == IDLE) begin
+            read_fill_level_bytes_out_r <= 3'd0;
+        end
         
         if(~rstn_i) begin
             read_data_r                 <= 32'b0;

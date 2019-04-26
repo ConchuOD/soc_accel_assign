@@ -78,13 +78,13 @@ module Nexys4Display (
     end
 
     //is a transfer completed? if so set complete flag -> 16 bit transfers, 2^4 = 16 for bit select
-    always @ (posedge block_clk_i or negedge rst_low_i)
+    always @ (posedge spi_rx_clk or negedge rst_low_i)
     begin
         if (~rst_low_i) spi_rx_transfer_complete_r <= 1'd0;
         else            spi_rx_transfer_complete_r <= spi_rx_transfer_complete_next_c;   
     end
 
-    assign spi_rx_transfer_complete_next_c = spi_rx_bit_count_r[4];
+    assign spi_rx_transfer_complete_next_c = spi_rx_bit_count_next_r[4];
 
     //is a byte completed? if so read it out -> 16 bit transfers therefore @ 8 & 16 
     always @ (posedge block_clk_i or negedge rst_low_i)

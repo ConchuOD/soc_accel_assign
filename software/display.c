@@ -13,12 +13,15 @@ void display_init(void)
 void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write)
 {
     uint16_t half_word_to_send;
+	uint32_t temp;
     spi_change_valid_write_bytes(0x02);
     half_word_to_send = ( ((uint16_t) DISPLAY_WRITE_COMMAND) << 12 ) | ( (uint16_t) (address_to_write & 0x0F) << 8 ) | (uint16_t) value_to_write;
     spi_set_ss(DISPLAY_SS_POS);
     spi_send_half_word(half_word_to_send);
+	temp = pt2SPI->write_word;
     while(!SPI_WRITE_COMPLETE){}
-    spi_clear_ss();    
+    spi_clear_ss(); 
+printf("temp: %08X",temp);			
 }
 void display_enable_all_digits(void)
 {

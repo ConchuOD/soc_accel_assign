@@ -13,8 +13,10 @@ void ADXL_ISR(void)
     //pt2NVIC->Disable	 = (1 << NVIC_ADXL_BIT_POS);
     g_data_ready_flag    = 1;
     adxl_send_read_command(ADXL_DATA_START);
+    spi_send_half_word(0xffff);
     while(!SPI_DATA_READY){}
     g_first_adxl_word = spi_read_word();
+    spi_send_word(0xffffffff);
     while(!SPI_DATA_READY){}
     spi_clear_ss();    
     g_second_adxl_word = spi_read_word();        

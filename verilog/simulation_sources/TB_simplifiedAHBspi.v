@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module TB_AHBspi ();
+module TB_simplifiedAHBspi ();
 
     localparam [2:0] BYTE = 3'b000, HALF = 3'b001, WORD = 3'b010;   // HSIZE values
     localparam [1:0] IDLE = 2'b00, NONSEQ = 2'b10;    // HTRANS values
@@ -46,7 +46,7 @@ module TB_AHBspi ();
         .SPI_CLK_o(SPI_clk_x)
         );
         
-    Nexys4DisplayTestTest dispTest(
+    Nexys4Display dispTest(
         .rst_low_i(HRESETn),
         .block_clk_i(block_clk),
         .spi_sclk_i(SPI_clk_x),   //id
@@ -100,11 +100,18 @@ module TB_AHBspi ();
         while(~HRDATA[4]) begin             
             AHBread(WORD, 32'h0, 32'h0);
         end
-        
+       
         // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
-        //AHBidle;
-        //#200
         
+        // Write two bytes to the display "straight away"
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_02);
+        AHBidle;
+        
+        
+        
+        
+        //AHBread(WORD, 32'h00_00_00_0C, 32'h0);
+        //AHBidle;
         // Set SPI slave select all disabled 
         //AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
         
@@ -113,13 +120,26 @@ module TB_AHBspi ();
         
         // Set SPI slave select all disabled except last (one-hot on write)
         // to select the display
-        AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
-        AHBidle;
+        //AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
+        //AHBidle;
         
         
         // Write two bytes to the display
         AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_02);
         AHBidle;
+        
+        while(~HRDATA[4]) begin             
+            AHBread(WORD, 32'h0, 32'h0);
+        end
+        
+        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
+        AHBidle;
+        #200
+        
+        AHBread(WORD, 32'h00_00_00_0C, 32'h0);
+        AHBidle;
+        
+        #10000
         
         // Do something here...
         $stop;

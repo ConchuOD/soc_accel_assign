@@ -9,7 +9,8 @@ module SPIMaster (
     output wire        spi_mosi_o,
     output wire        spi_clk_o,
     output wire [31:0] spi_read_data_o,
-    output wire [ 2:0] spi_read_data_bytes_valid_o
+    output wire [ 2:0] spi_read_data_bytes_valid_o,
+    output wire        ready_o
 );
 
     wire[7:0] spi_rx_data_x, shift_reg_byte_x;
@@ -63,7 +64,8 @@ module SPIMaster (
         .spi_clk_o(spi_clk_o),              
         .read_data_o(spi_read_data_o),
         .read_data_bytes_valid_o(spi_read_data_bytes_valid_o),
-        .clear_shift_reg_o(clear_shift_reg_x)
+        .clear_shift_reg_o(clear_shift_reg_x),
+        .ready_o(ready_o)
     );
 
 endmodule

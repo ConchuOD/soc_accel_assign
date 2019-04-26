@@ -89,5 +89,5 @@ module DisplayInterface (
         endcase
     end
     //7 bit pattern + 1 bit radix point to 8 bit segment output
-    assign segment = { segSeven[6:0], radixOut } | {(8){~enable[countOutput]}}; //enable mask 
+    assign segment = { segSeven[6:0], radixOut };// | {(8){~enable[countOutput]}}; //enable mask 
 endmodule

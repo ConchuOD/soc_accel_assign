@@ -34,11 +34,12 @@ module AHBspi (
     reg[31:0] ctrl_status_r; 
     reg[31:0] spi_ss_r, write_only_r, read_only_r;
     wire[31:0] spi_ss_c;
+    wire spi_ready_x;
     
     reg await_rdata_read_r;
     wire ahb_read_spi_data_c;
     
-    reg spi_state_r;   
+    reg[1:0] spi_state_r;   
     
     reg[31:0] read_data_r;   
     reg reset_fill_level_r;
@@ -48,6 +49,7 @@ module AHBspi (
     wire       spi_ss_reduce_c;
     reg[2:0]   spi_data_byte_writes_required_r;
     wire[2:0]  spi_read_data_bytes_valid_x;
+    reg spi_transact_underway_r;
     
     assign spi_ss_c        = (ctrl_status_r[CS_SS_ACTIVE_HIGH]) ? ~spi_ss_r : spi_ss_r;
     assign spi_ss_reduce_c = ~&spi_ss_c;
@@ -121,7 +123,7 @@ module AHBspi (
         
         case (spi_state_r)
         IDLE : begin
-            if(write_r & spi_ss_reduce_c & spi_data_byte_writes_required_r > 3'd0) begin
+            if(write_r & spi_ss_reduce_c & spi_data_byte_writes_required_r > 3'd0 & spi_ready_x) begin
                 spi_state_r                            <= TRANSACT;
                 spi_enable_r                           <= 1'b1; 
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // The data requested to be written has not been written yet                
@@ -129,30 +131,44 @@ module AHBspi (
         end        
         TRANSACT : begin
             // Logic for WDATA_FINISHED flag
+            // Ensures SPI transaction has started
+            if(spi_read_data_bytes_valid_x > 3'd0) begin
+                spi_transact_underway_r <= 1'b1;
+            end 
+
             if(spi_read_data_bytes_valid_x == spi_data_byte_writes_required_r) begin
+                spi_enable_r <= 1'b0;
+            end    
+            
+            // Know SPI is ready for another transaction here
+            if(spi_transact_underway_r & spi_ready_x) begin
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b1; // Have written down the number of bytes requested to be written
                 ctrl_status_r[CS_RDATA_READY_INDEX]    <= 1'b1; // Have written down the number of bytes requested to be written
-                spi_enable_r                           <= 1'b0;                
+                //spi_enable_r                           <= 1'b0; 
+                spi_transact_underway_r                <= 1'b0;
             end
             
-            // If another SPI write is requested before the SPI data from 
-            // the previous SPI transaction is read from AHB
-            if(write_r & spi_data_byte_writes_required_r > 3'd0) begin
+            // User doesn't care about the data received from SPI
+            // and wants to perform another write
+            if(write_r & spi_ready_x & ctrl_status_r[CS_RDATA_READY_INDEX]) begin
                 spi_enable_r                           <= 1'b1; 
-                ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0;
+                ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // Read has occurred, so reset the data_written flag
+                ctrl_status_r[CS_RDATA_READY_INDEX]    <= 1'd0;
             end
             
-            ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= spi_read_data_bytes_valid_x;
-            read_only_r                                          <= spi_read_data_x;
+            read_only_r                                <= spi_read_data_x;
             
+            // If slave has been disabled, or the SPI read data has been read,
+            // we can idle
             if(~spi_ss_reduce_c | spi_data_byte_writes_required_r == 3'd0) begin
                 spi_state_r                            <= IDLE;
                 spi_enable_r                           <= 1'b0;                
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // Read has occurred, so reset the data_written flag
                 ctrl_status_r[CS_RDATA_READY_INDEX]    <= 1'd0;
                 ctrl_status_r[CS_RDATA_BYTES_VALID_COUNT_INDEX +: 3] <= 3'd0;
+                spi_transact_underway_r <= 1'b0;
             end
-        end        
+        end 
         endcase
         
         if(~HRESETn) begin
@@ -160,6 +176,7 @@ module AHBspi (
             read_only_r   <= 32'd0;
             spi_enable_r  <= 1'b0;
             ctrl_status_r <= 32'd0;
+            spi_transact_underway_r <= 1'b0;
         end
     end
     
@@ -174,7 +191,8 @@ module AHBspi (
         .spi_mosi_o(SPI_MOSI_o),
         .spi_clk_o(SPI_CLK_o),
         .spi_read_data_o(spi_read_data_x),
-        .spi_read_data_bytes_valid_o(spi_read_data_bytes_valid_x)
+        .spi_read_data_bytes_valid_o(spi_read_data_bytes_valid_x),
+        .ready_o(spi_ready_x)
     );
 
     // Never delayed

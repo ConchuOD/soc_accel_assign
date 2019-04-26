@@ -65,6 +65,9 @@ int main(void) {
     printf("\r\nadxl init complete\r\n");
     //display setup TODO
     display_init();
+		display_send_write_data(7,7);
+		display_send_value(0,557);
+		wait_n_loops(10000000000);
     printf("\r\ndisplay init complete\r\n");
 
     pt2NVIC->Enable =  pt2NVIC->Enable | (1UL << NVIC_ADXL_BIT_POS);
@@ -89,9 +92,9 @@ int main(void) {
             printf("raw zdata = %05hd\t", adxl_z_data);	
             printf("\r\n");
             
-            display_send_value(VALUE_1_OFFSET,scaled_adxl_x_data);
-            display_send_led_value(adxl_y_data);
-            display_send_value(VALUE_2_OFFSET,scaled_adxl_z_data);
+            //display_send_value(VALUE_1_OFFSET,scaled_adxl_x_data);
+            //display_send_led_value(adxl_y_data);
+            //display_send_value(VALUE_2_OFFSET,scaled_adxl_z_data);
             
             wait_n_loops(nLOOPS_per_DELAY);  // wait a little
         } //if data ready
