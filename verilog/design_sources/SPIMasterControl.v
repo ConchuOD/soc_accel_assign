@@ -14,43 +14,40 @@ module SPIMasterControl(
     output wire        spi_clk_o,
     output wire [31:0] read_data_o,
     output wire [ 2:0] read_data_bytes_valid_o,
-    output reg         clear_shift_reg_o
-    // Need a signal to indicate the transaction bit length?
-    // Need parameter to indicate SPI clock idle value
+    output wire        clear_shift_reg_o
+    // Need parameter to indicate SPI clock idle value?
+    // Need parameter to indicate SPI clock frequency?
 );
 
     localparam IDLE = 1'b0, SHIFTING = 1'b1;
     localparam SPI_CLOCK_IDLE = 1'b1;
 
     reg[4:0] count_r;
-    reg[31:0] read_data_r, write_data_r;
     reg spi_clk_waiting_r;
+    
+    
+    reg[31:0] read_data_r, write_data_r;
+    
     reg ctrl_state_r;
     reg loading_r, shifting_r;
     reg[3:0] bit_count_r;
-    reg[2:0] byte_count_r;
+    reg[2:0] bytes_remaining_r;
     reg[2:0] read_fill_level_bytes_r, read_fill_level_bytes_out_r;
     reg new_byte_r; 
     reg reset_fill_level_r;
     wire[2:0] read_fill_index_c;
     wire reset_fill_level_spi_clk_x;
+    reg clear_shift_reg_r;
 
     assign read_fill_index_c       = 3'd4 - read_fill_level_bytes_r;
     assign load_shift_reg_byte_o   = loading_r;
     assign load_shift_reg_bit_o    = shifting_r;
     assign load_clk_o              = spi_clk_waiting_r;
     assign spi_clk_o               = shifting_r ? spi_clk_waiting_r : SPI_CLOCK_IDLE;
+    
     assign read_data_bytes_valid_o = read_fill_level_bytes_out_r;
     assign read_data_o             = read_data_r;
-    
-    
-    scp scp_reset_fill(
-        .src_clk_i(clk_i),
-        .dest_clk_i(spi_clk_waiting_r),
-        .rstn_i(rstn_i),
-        .input_pulse_i(reset_fill_level_i),
-        .output_pulse_o(reset_fill_level_spi_clk_x)        
-    );
+    assign clear_shift_reg_o       = 1'b0;
     
     // Need to generate SPI clk @ ~2.5 MHz when reading for 7 cycles,
     // currently much faster than that for ease of simulation
@@ -70,103 +67,81 @@ module SPIMasterControl(
     end
     
     always @(negedge spi_clk_waiting_r) begin 
-        clear_shift_reg_o   <= 1'b0;    // Only ever hold the clear signal high for 1 clock cycle
+        new_byte_r <= 1'b0;  // Only allow high for one clock cycle
         case (ctrl_state_r)
         IDLE : begin
             if(enable_i) begin
-                ctrl_state_r          <= SHIFTING;
-                // Load in word                
-                write_data_r          <= write_data_i;
-                loading_r             <= 1'b1;
-                shift_reg_byte_o      <= write_data_i[8*(write_data_bytes_valid_i-3'd1) +: 8];
-                byte_count_r          <= write_data_bytes_valid_i - 3'd1;
-                bit_count_r           <= 4'd7;
+                ctrl_state_r                <= SHIFTING;
+                write_data_r                <= write_data_i;
+                loading_r                   <= 1'b1;
+                read_fill_level_bytes_r     <= 3'd0;
+                shift_reg_byte_o            <= write_data_i[8*(write_data_bytes_valid_i-3'd1) +: 8];
+                bytes_remaining_r           <= write_data_bytes_valid_i;// - 3'd1;
+                bit_count_r                 <= 4'd7;
             end
         end
         
         SHIFTING : begin
-            loading_r   <= 1'b0;
-            shifting_r  <= 1'b1;  
-
-            if(byte_count_r > 3'd0) begin
-                shift_reg_bit_o <= write_data_r[8*(byte_count_r-3'd1) + bit_count_r];
-            end
-            else begin
-                shift_reg_bit_o <= 1'b1;
-            end
-            
-            bit_count_r <= bit_count_r - 4'd1;
-            
-            // Quit straight away if we would over
+            // Quit straight away if enable_i has gone low
             if(~enable_i) begin 
                 ctrl_state_r                <= IDLE;
-                read_data_r                 <= 32'b0;
                 bit_count_r                 <= 4'd0;
-                byte_count_r                <= 3'd0;
+                bytes_remaining_r           <= 3'd0;
                 read_fill_level_bytes_r     <= 3'd0;
-                read_fill_level_bytes_out_r <= 3'd0;
-                clear_shift_reg_o           <= 1'b1;
                 new_byte_r                  <= 1'b0;
                 loading_r                   <= 1'b0;
                 shifting_r                  <= 1'b0;
             end
-            
-            if(reset_fill_level_spi_clk_x) begin
-                reset_fill_level_r <= 1'b1;
-            end
-            
-            if(bit_count_r == 4'd0) begin 
-                bit_count_r             <= 4'd7;                
-                byte_count_r            <= (byte_count_r > 3'd0) ? byte_count_r - 3'd1 : byte_count_r;
-                new_byte_r              <= 1'b1;
+            else begin            
+                loading_r   <= 1'b0;
+                shifting_r  <= 1'b1;
                 
-                if(reset_fill_level_spi_clk_x | reset_fill_level_r) begin
-                    read_fill_level_bytes_r <= 3'd1;
-                    reset_fill_level_r      <= 1'b0;
+                if(bytes_remaining_r > 3'd0) begin
+                    // Continue transacting
+                    shift_reg_bit_o <= write_data_r[8*(bytes_remaining_r-3'd1) + bit_count_r];                    
+                    bit_count_r     <= bit_count_r - 4'd1;
+                
+                    if(bit_count_r == 4'd0) begin 
+                        bit_count_r             <= 4'd7;                
+                        bytes_remaining_r       <= bytes_remaining_r - 3'd1;
+                        new_byte_r              <= 1'b1;                        
+                        read_fill_level_bytes_r <= read_fill_level_bytes_r + 3'b1;
+                    end
                 end
                 else begin
-                    read_fill_level_bytes_r <= (read_fill_level_bytes_r % 3'd4) + 3'd1;
-                end                
-                
-                // Only terminate on a byte boundary
-                if(~enable_i) begin
+                    // We have sent the desired number of bytes for this SPI transaction,
+                    // so terminate
                     ctrl_state_r                <= IDLE;
-                    read_data_r                 <= 32'b0;
-                    bit_count_r                 <= 4'd7;
-                    reset_fill_level_r          <= 1'b0;
-                    byte_count_r                <= 3'd0;
-                    read_fill_level_bytes_r     <= 3'd0;
-                    read_fill_level_bytes_out_r <= 3'd0;
-                    clear_shift_reg_o           <= 1'b1;
-                    new_byte_r                  <= 1'b0;
+                    bit_count_r                 <= 4'd0;
+                    bytes_remaining_r           <= 3'd0;
                     loading_r                   <= 1'b0;
                     shifting_r                  <= 1'b0;
-                end
-            end
-            
-            // Capture the read bytes from the read shift register
-            // on the negedge clock AFTER the 8th bit has been written
-            if(new_byte_r) begin
-                read_data_r[8*read_fill_index_c +: 8] <= read_data_i;
-                read_fill_level_bytes_out_r <= read_fill_level_bytes_r;
-                new_byte_r <= 1'b0;
+                end     
             end
         end 
         endcase
             
         if(~rstn_i) begin
-            ctrl_state_r                <= IDLE;
-            read_data_r                 <= 32'b0;
+            ctrl_state_r                <= IDLE;            
             bit_count_r                 <= 4'd7;
-            byte_count_r                <= 3'd0;
+            bytes_remaining_r           <= 3'd0;
             read_fill_level_bytes_r     <= 3'd0;
-            read_fill_level_bytes_out_r <= 3'd0;
             reset_fill_level_r          <= 1'b0;
-            clear_shift_reg_o           <= 1'b0;
             new_byte_r                  <= 1'b0;
             loading_r                   <= 1'b0;
             shifting_r                  <= 1'b0;
         end
     end
-
+    
+    always @(negedge spi_clk_waiting_r) begin
+        if(new_byte_r) begin
+            read_data_r[8*read_fill_index_c +: 8] <= read_data_i;
+            read_fill_level_bytes_out_r           <= read_fill_level_bytes_r;
+        end 
+        
+        if(~rstn_i) begin
+            read_data_r                 <= 32'b0;
+            read_fill_level_bytes_out_r <= 3'd0;
+        end
+    end
 endmodule

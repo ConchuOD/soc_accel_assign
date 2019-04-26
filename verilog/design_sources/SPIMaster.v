@@ -13,7 +13,7 @@ module SPIMaster (
 );
 
     wire[7:0] spi_rx_data_x, shift_reg_byte_x;
-    wire load_shift_reg_byte_x, load_shift_reg_bit_x, clear_shift_reg_x;
+    wire load_shift_reg_byte_x, load_shift_reg_bit_x, shift_reg_bit_x, clear_shift_reg_x;
     
     // Wire enable directly to slave select - might change this
     //assign spi_ss_o = enable_i;
