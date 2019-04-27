@@ -1,4 +1,6 @@
+#if SERIAL
 #include <stdio.h>
+#endif
 #include "display.h"
 #include "spi.h"
 #include "util.h"
@@ -20,8 +22,7 @@ void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write)
     spi_send_half_word(half_word_to_send);
 	temp = pt2SPI->write_word;
     while(!SPI_WRITE_COMPLETE){}
-    spi_clear_ss(); 
-printf("temp: %08X",temp);			
+    spi_clear_ss(); 		
 }
 void display_enable_all_digits(void)
 {
@@ -67,10 +68,13 @@ void display_send_value(uint8_t digit_offset, int16_t value_to_display)
 
     for(inc = 0; inc < DISPLAY_DIGITS_PER_VAR; inc++)
     {
-			  if(address == 9)
-				{
-					printf("error\r\n");
-				}
+        #if SERIAL
+        if(address == 9)
+        {
+            printf("error, invalid address\r\n");
+        }
+        #endif
+        
         address = digit_offset + inc + 1;
         character = *(digits+inc);
         display_send_write_data(address, character);

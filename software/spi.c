@@ -8,7 +8,7 @@ void spi_init(void)
 }
 void spi_send_byte(uint8_t byte_to_send)
 {
-    pt2SPI->write_half_word = (uint16_t) byte_to_send;
+    pt2SPI->write_byte = byte_to_send;
 }
 void spi_change_valid_write_bytes(uint8_t num_valid_bytes)
 {

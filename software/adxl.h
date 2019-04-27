@@ -20,10 +20,9 @@ uint8_t adxl_read_status(void);
 void adxl_init(void);
 uint16_t * adxl_convert_bcd(uint32_t data_to_convert);
 int16_t adxl_scale_value(int16_t value_to_scale);
+uint8_t adxl_read_register(uint8_t address);
 
 extern volatile uint8_t  g_data_ready_flag;
-extern volatile uint32_t g_first_adxl_word;
-extern volatile uint32_t g_second_adxl_word;
 
 void ADXL_ISR(void);
 
