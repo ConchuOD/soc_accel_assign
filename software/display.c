@@ -5,54 +5,65 @@
 #include "spi.h"
 #include "util.h"
 
-//display
-//display
+#define DISPLAY_WRITE_COMMAND     0x01
+#define DISPLAY_ENABLE_REG        0x00
+#define DISPLAY_ENABLE_ALL        0xFF
+#define DISPLAY_MINUS             0x0A
+#define DISPLAY_BLANK             0x0F
+#define DISPLAY_RADIX_REG         0x09
+#define DISPLAY_RADIX_LOCS        0x44
+#define DISPLAY_DIGITS_PER_VAR    4
+#define DISPLAY_CLIPPING_THRESH   1000
+#define DISPLAY_NUM_LEDS          16
+
+
+//////////////////////////////////////////////////////////////////
+// Display functions
+//////////////////////////////////////////////////////////////////
 void display_init(void)
 {
     display_enable_all_digits();
-    display_send_write_data(RADIX_REG,RADIX_LOCS);    
+    display_send_write_data(DISPLAY_RADIX_REG, DISPLAY_RADIX_LOCS); //enable radices at desired location   
 }
 void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write)
 {
     uint16_t half_word_to_send;
-	uint32_t temp;
-    spi_change_valid_write_bytes(0x02);
+    
+    //prepend write command & address
     half_word_to_send = ( ((uint16_t) DISPLAY_WRITE_COMMAND) << 12 ) | ( (uint16_t) (address_to_write & 0x0F) << 8 ) | (uint16_t) value_to_write;
-    spi_set_ss(DISPLAY_SS_POS);
-    spi_send_half_word(half_word_to_send);
-	temp = pt2SPI->write_word;
-    while(!SPI_WRITE_COMPLETE){}
-    spi_clear_ss(); 		
+    spi_set_ss(DISPLAY_SS_POS); //set slave select
+    spi_send_half_word(half_word_to_send); //write 16 bits
+    while(!SPI_WRITE_COMPLETE){} //wait for write to finish
+    spi_clear_ss(); //clear slave select	
 }
 void display_enable_all_digits(void)
 {
     uint16_t half_word_to_send;
+    
+    //prepend write command & address
     half_word_to_send = ( ((uint16_t) DISPLAY_WRITE_COMMAND) << 12 ) | ( (uint16_t) (DISPLAY_ENABLE_REG) << 8 ) | (uint16_t) DISPLAY_ENABLE_ALL;
-    spi_set_ss(DISPLAY_SS_POS);
-    spi_send_half_word(half_word_to_send);
-    while(!SPI_WRITE_COMPLETE){}
-    spi_clear_ss(); 
+    spi_set_ss(DISPLAY_SS_POS); //set slave select
+    spi_send_half_word(half_word_to_send); //write 16 bits
+    while(!SPI_WRITE_COMPLETE){} //wait for write to finish
+    spi_clear_ss();  //clear slave select
 }
 void display_value_to_digits(int16_t value_to_display, uint8_t * digits, const uint8_t num_digits)
 {
     uint8_t inc;
-    uint8_t sign;
     int16_t magnitude;
 
-    sign = value_to_display < 0 ? 1 : 0; //sign is 1 if less than zero, 1 otherwise
-    if (sign) //todo delete this
+    if (value_to_display < 0) 
     {
         *(digits+num_digits-1) = DISPLAY_MINUS;
-        magnitude = -value_to_display;
+        magnitude = -value_to_display; //reverse 2s complement for negative number
     }
     else
     {
-        *(digits+num_digits-1) = DISPLAY_BLANK;
+        *(digits+num_digits-1) = DISPLAY_BLANK; //top digit is blank for positive values
         magnitude = value_to_display;
     }
 
-    for(inc=0;inc<num_digits-1;inc++)
-    {
+    for(inc=0;inc<num_digits-1;inc++){ //convert magnitude to specified # of digits
         magnitude     = magnitude/10;
         *(digits+inc) = (uint8_t)(magnitude%10);
     }
@@ -64,40 +75,34 @@ void display_send_value(uint8_t digit_offset, int16_t value_to_display)
     uint8_t address;
     uint8_t character;
 
-    display_value_to_digits(value_to_display, digits, DISPLAY_DIGITS_PER_VAR);
+    display_value_to_digits(value_to_display, digits, DISPLAY_DIGITS_PER_VAR); //convert magnitude to specified # of digits
 
-    for(inc = 0; inc < DISPLAY_DIGITS_PER_VAR; inc++)
-    {
-        #if SERIAL
-        if(address == 9)
-        {
-            printf("error, invalid address\r\n");
-        }
-        #endif
-        
-        address = digit_offset + inc + 1;
+    for(inc = 0; inc < DISPLAY_DIGITS_PER_VAR; inc++)  //send digits to display
+    {       
+        address = digit_offset + inc + 1; //add increment to offset, +1 due to enable reg @ 0
         character = *(digits+inc);
-        display_send_write_data(address, character);
-        //wait_n_loops(333);
+        display_send_write_data(address, character); //send character to appropriate digit register
     }
 }
 void display_send_led_value(int16_t value_to_display)
 {
     uint16_t led_pos;
-    uint16_t led_lit;
     uint16_t us_value_to_display;
     
-    if(value_to_display > 1023)
+    const uint16_t scale_to_led_count = (2*DISPLAY_CLIPPING_THRESH)/DISPLAY_NUM_LEDS;
+    
+    //clip values outside the range
+    if(value_to_display > (DISPLAY_CLIPPING_THRESH - 1))
     {
-        value_to_display = 1023;
+        value_to_display = (DISPLAY_CLIPPING_THRESH - 1);
     }
-    else if (value_to_display < -1024)
+    else if (value_to_display < -DISPLAY_CLIPPING_THRESH)
     {
-        value_to_display = -1024;
+        value_to_display = -DISPLAY_CLIPPING_THRESH;
     }
     
-    us_value_to_display = (uint16_t) (value_to_display + 1024);
-    led_pos = us_value_to_display/128;
-    led_lit = (1UL << led_pos);
-    pt2GPIO->LED = led_lit;
+    //convert to unsigned value by adding the midpoint on again
+    us_value_to_display = (uint16_t) (value_to_display + DISPLAY_CLIPPING_THRESH);
+    led_pos = us_value_to_display/scale_to_led_count; //scale to the # of LEDs
+    pt2GPIO->LED = (1UL << led_pos); //light up the lED corresponding to value
 }
