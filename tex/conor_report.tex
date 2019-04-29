@@ -104,20 +104,86 @@
 
 \begin{document}
 \section*{Introduction}
-In this assignment, the objective was to design the peripheral devices and write code to display the acceleration information from the 3-axis in some manner. The platform on which this assignment was completed was a Nexys4 Development board, which features a Xilinx Artix-7 FPGA and an Analog Devices ADXL362 accelerometer. Also provided were a ``soft'' ARM Cortex M0 microcontroller core alongside UART, RAM, ROM and GPIO peripherals, each using the AHB Lite bus. The minimum specification required the display of a single axis on the LEDs, but in our case we chose to read back information from all three axes. X- \& z-axis information displayed on the 7-segment display and, as it lay in the same plane, the y-axis information on the LEDs. 
+In this assignment, the objective was to design peripheral devices and implement code that would display the acceleration information from a 3-axis accelerometer in some manner. The platform on which this assignment was to be completed was a Nexys4 Development board, featuring a Xilinx Artix-7 FPGA and an Analog Devices ADXL362 accelerometer among other components. Also provided were a ``soft'' ARM Cortex M0 microcontroller core alongside UART, RAM, ROM and GPIO peripherals (implemented in Verilog), each using the AHB Lite bus. The minimum assignment requirements mandated the display of a single axis on the LEDs. In our case we chose to read back information from all three axes, of which the x- \& z-axis information would be shown on the 7-segment display and, as it lay in the same plane, the y-axis information would be represented by the LEDs. 
 
 \section*{High Level Design}
-Regardless of the choices made regarding the assignment's direction, an SPI interface of some type is required to interface with the ADXL362 accelerometer. Ideally, a SPI master peripheral would be implemented in hardware to avoid blocking program execution during transfers, and as it has the potential to achieve a better grade. As the program would be running on an ARM Cortex microcontroller core, this peripheral must also implement an AHB Lite interface on the processor side. From the introductory lab session, we had already connected the LEDs to the GPIO peripheral so no additional hardware would be required. However, we also wished to display the acceleration on the 7-segment displays present on the board which would require additional hardware to control. All calculations relating to the acceleration values and interfacing with various peripherals were to be handled in software running on the ARM core.
+Regardless of the choices made regarding the assignment's direction, an SPI interface of some type is required to interface with the ADXL362 accelerometer. Although a software implementation is possible, ideally a SPI master peripheral would be implemented in hardware. This avoids blocking program execution during transfers, and has the potential to achieve a better grade. As the program would be running on an ARM Cortex microcontroller core, this peripheral must also implement an AHB Lite interface on the processor side.
 
-It was decided that as I had done plenty of Verilog for my project, that Andrew would implement the SPI master peripheral to gain more experience with the language, and I would work primarily on the software and display side of things.
+From the introductory lab session, we had already connected the LEDs to the GPIO peripheral so no additional hardware would be required. As we wished to display the acceleration on the 7-segment displays present on the board, some additional hardware to control these would be needed. We intended that all calculations relating to the acceleration values and interfacing with various peripherals would be handled in software running on the ARM core.
 
-\section*{Design}
-\subsection*{SPI Master Peripheral}
-\subsection*{7-Segment Display}
-\subsection*{ADXL Interaction}
-\subsection*{Software}
+It was decided that as I had done plenty of Verilog for my project, that Andrew would implement the SPI master peripheral to gain more experience with the language, and I would work primarily on the software and display aspects of the assignment.
 
-\section*{Implementation}
+
+
+\section*{7-Segment Display}
+\subsection*{Design}
+%TODO signed 1.2 per digit
+
+The 7-segment displays are controlled by two 7 bit signals. The first of these controls which of the segments are activated, while the second is a one-hot digit selector. This means only a single digit can be lit at any one time, and therefore to get a human readable output on all eight digits, they must be switched between at a speed at which the human eye cannot discern. If this was performed in software, a large amount of processor time would be consumed by this digit cycling, so this problem is better solved in hardware. This hardware should store the values to display, meaning the software only needs to update the value to display when it changes.
+
+The \texttt{DisplayInterface} module I had written for Digital System Design served as the basis for the hardware implementing the display controller. This module already had the capability to take a 16 bit value and display it on 4 of the 8 segments, so the duplication of this work was not required. As we wished to use all 8 segments, this module was extended to achieve this functionality, and the input value was increased to 32 bits wide.
+A clock frequency in the range of $5~\si{\mega\hertz}$ was required for \texttt{DisplayInterface}, which was acquired by adding an additional output to the FPGA's clock generation block. This
+\begin{lstlisting}[style={verilog-style}]
+    module DisplayInterface (
+    input             reset,
+    input             clock,
+    input      [31:0] value,
+    input      [7:0]  enable,
+    input      [7:0]  point,
+    output     [7:0]  segment, 
+    output reg [7:0]  digit
+    );
+\end{lstlisting}
+
+However, this $32$ bit value must be held constant which necessitates a memory element. The value stored in this memory element could then be set by the programmer. This could be done by treating this as a special function register, requiring the use of the AHB interface. A single write would then be required by the programmer, after having correctly ordered the values to display on each digit in one unsigned 32 bit integer.
+
+This, however, is not a realistic scenario as the controller for a 7-segment display would ordinarily not be located on the same IC as the microprocessor. Instead, the interface to the display was implemented in SPI, similarly to the standalone display in the previous assignment. Each of the 8 digits are presented to the programmer as separate registers, with two additional registers present to control the radix points and enable/disable digits. Integer values are written as binary coded decimal to each of these registers, which is then decoded. The \texttt{hex2seg} module from Digital System Design is replaced by \texttt{BCD2seg} which allows for the display of the range $0\rightarrow 9$, blank digits, and a minus sign. \textsc{display_slave.pdf} contains a brief ``datasheet'', which describes the layout of the registers and transaction protocol.
+
+As there are 8 digits and 2 values to display, each value gets 4 digits. Of these 4, one is reserved for the sign of the acceleration, leaving three to display the value received. Given the ranges available from the accelerometer are $\pm2,4,8$g the obvious choice for the remaining digits is 1 representing the integer value and 2 places of decimal.
+
+\subsection{Implementation}
+As the digit handling aspect of the display was handling by an existing design, this section will focus on the SPI slave wrapper created specifically for this project. This slave need only implement an SPI receiver, as it has no data worth sending back to the Master. As can be seen in the module I/O description, ... the four signals required for SPI are also present, however, \texttt{spi_miso_o} serves no purpose so is wired directly to logic high. The protocol for this device was designed to match that of the ADXL362 to avoid reconfiguration of the Master device, so the slave clocks in data on rising edges of \texttt{spi_sclk_i}. Apart from clock, which is idle low, all other signals idle at logic high.
+\begin{lstlisting}[style={verilog-style}]
+    module Nexys4Display (
+    input         rst_low_i,
+    input         block_clk_i,
+    input         spi_sclk_i, //idle low, posedge active, < 2.5 MHz
+    input         spi_ss_i,   //idle high
+    input         spi_mosi_i, //idle high
+    output        spi_miso_o, //idle high
+    output  [7:0] segment_o, 
+    output  [7:0] digit_o
+    );
+\end{lstlisting}
+
+The receiver is implemented by an 8 bit wide shift register, clocked on the rising edge of \texttt{spi_sclk_i}, At each edge, the value on \texttt{spi_mosi_i} is shifted into the register. The data on \texttt{spi_mosi_i} is, however, ignored if the display's slave select has not been driven low. After every 8 bits are received, the data in the shift register is clocked into a regular 8 bit wide register. As transactions are 16 bits long, this represents the upper byte of the transfer. After the 16th bit is received, the shift register value is assigned to a second register, this one representing the lower byte and a transaction complete flag is set. These registers are called \texttt{spi_rx_u_byte_r} \& \texttt{spi_rx_l_byte_r}. While the transaction complete flag is set, the value in these two registers will be decoded and the result written into the relevant data register, provided the write command was sent. Any other command will be ignored by the receiver.
+
+The data registers were instantiated using a generate statement, and therefore are stored as an 8 bit array of type \texttt{reg}. The received address is used to index into this array, thereby only the addresses at which there exists a register will respond to write instructions. Despite just 4 bits in each data register being used, the registers are 8 bits wide to preserve a common interface with the enable and radix registers which each contain 8 bits. The Verilog for the data register instantiation shown is below:
+\begin{lstlisting}[style={verilog-style}]
+    genvar reg_inc;
+    generate
+        for (reg_inc = 0;reg_inc <= NUM_REGISTERS-1;reg_inc = reg_inc+1)
+        begin: REGISTERS
+            always @ (posedge block_clk_i or negedge rst_low_i)
+            begin
+                if (~rst_low_i) register_digit_r[reg_inc] <= {(BYTE_WIDTH){1'b0}};
+                else            register_digit_r[reg_inc] <= register_digit_next_r[reg_inc];
+            end
+            always @ (rx_address_r, rx_value_r, register_digit_r, spi_rx_transfer_complete_r)
+            begin
+                if (spi_rx_transfer_complete_r && rx_address_r == reg_inc[3:0]) register_digit_next_r[reg_inc] = rx_value_r;
+                else                                                            register_digit_next_r[reg_inc] = register_digit_r[reg_inc];
+            end
+        end
+    endgenerate
+\end{lstlisting}
+
+While the transactions are 16 bits wide, I chose to implement the receiver portion of thus module as a pair of 8 bit wide registers, for the upper and lower bytes respectively. This was done so that if, at some other time, messages that did not contain a payload were used, the could be easily be accommodated for alongside the existing 16 bit wide writes. Once 16 bits have been received, and the transaction marked complete, the accumulator counting the number of bits is reset to zero, in preparation for the next message.
+
+The lower four bits from each of the 8 data registers are concatenated together, forming a 32 bit word. Each of these 4 bit values represents a BCD digit to be displayed, with the rightmost digit controlled by the 4 LSBs, and so on.
+
+\section*{LED Display}
+The line of LEDs is parallel to the y-axis of the ADXL362, so it is the obvious choice for visualisation on the LEDs.
 
 \section*{Testing}
 
