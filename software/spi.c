@@ -1,5 +1,6 @@
 #include "spi.h"
 
+// Set number of valid bytes in WDATA to 2, set slave select signals to active low
 #define SPI_INITIAL_CFG           0x00002040
 #define SPI_WDATA_VALID_BYTE_MASK 0x000000E0;
 
@@ -8,7 +9,6 @@
 //////////////////////////////////////////////////////////////////
 void spi_init(void)
 {
-    // Set number of valid bytes in WDATA to 2, set slave select signals to active low
     pt2SPI->control = SPI_INITIAL_CFG;
 }
 

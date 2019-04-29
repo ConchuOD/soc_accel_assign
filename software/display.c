@@ -36,6 +36,7 @@ void display_send_write_data(uint8_t address_to_write, uint8_t value_to_write)
     while(!SPI_WRITE_COMPLETE){} //wait for write to finish
     spi_clear_ss(); //clear slave select	
 }
+
 void display_enable_all_digits(void)
 {
     uint16_t half_word_to_send;
@@ -47,6 +48,7 @@ void display_enable_all_digits(void)
     while(!SPI_WRITE_COMPLETE){} //wait for write to finish
     spi_clear_ss();  //clear slave select
 }
+
 void display_value_to_digits(int16_t value_to_display, uint8_t * digits, const uint8_t num_digits)
 {
     uint8_t inc;
@@ -68,6 +70,7 @@ void display_value_to_digits(int16_t value_to_display, uint8_t * digits, const u
         *(digits+inc) = (uint8_t)(magnitude%10);
     }
 }
+
 void display_send_value(uint8_t digit_offset, int16_t value_to_display)
 {
     uint8_t inc;
@@ -84,6 +87,7 @@ void display_send_value(uint8_t digit_offset, int16_t value_to_display)
         display_send_write_data(address, character); //send character to appropriate digit register
     }
 }
+
 void display_send_led_value(int16_t value_to_display)
 {
     uint16_t led_pos;
@@ -103,6 +107,8 @@ void display_send_led_value(int16_t value_to_display)
     
     //convert to unsigned value by adding the midpoint on again
     us_value_to_display = (uint16_t) (value_to_display + DISPLAY_CLIPPING_THRESH);
-    led_pos = us_value_to_display/scale_to_led_count; //scale to the # of LEDs
-    pt2GPIO->LED = (1UL << led_pos); //light up the lED corresponding to value
+    //light up the lED corresponding to value
+    led_pos = us_value_to_display/scale_to_led_count;
+    //light up the lED corresponding to value
+    pt2GPIO->LED = (1UL << led_pos);
 }

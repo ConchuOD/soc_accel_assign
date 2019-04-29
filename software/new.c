@@ -45,12 +45,12 @@ void UART_ISR()
 // Main Function
 //////////////////////////////////////////////////////////////////
 int main(void) {
-    uint16_t   adxl_x_data;
-    uint16_t   adxl_y_data;
-    uint16_t   adxl_z_data;
-    uint16_t   scaled_adxl_x_data;
-    uint16_t   scaled_adxl_y_data;
-    uint16_t   scaled_adxl_z_data; 
+    int16_t   adxl_x_data;
+    int16_t   adxl_y_data;
+    int16_t   adxl_z_data;
+    int16_t   scaled_adxl_x_data;
+    int16_t   scaled_adxl_y_data;
+    int16_t   scaled_adxl_z_data; 
 
     //enable interrupts
     pt2NVIC->Enable = (1UL << NVIC_UART_BIT_POS); //enable interrupts for UART & ADXL in the NVIC
@@ -107,7 +107,8 @@ int main(void) {
             printf("\r\n");
             #endif
             
-            display_send_value(VALUE_1_OFFSET,scaled_adxl_x_data); //display on digits & LEDs
+            //display on digits & LEDs
+            display_send_value(VALUE_1_OFFSET,scaled_adxl_x_data); 
             display_send_led_value(scaled_adxl_y_data);
             display_send_value(VALUE_2_OFFSET,scaled_adxl_z_data);
 

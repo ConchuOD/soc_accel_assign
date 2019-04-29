@@ -2,7 +2,6 @@
 #define ADXL_H_
 
 #include "DES_M0_SoC.h"
-#include "spi.h"
 
 extern volatile uint8_t  g_data_ready_flag;
 
@@ -19,6 +18,6 @@ void adxl_send_half_word(uint16_t data_to_send);
 int16_t adxl_scale_value(int16_t value_to_scale);
 uint8_t adxl_read_register(uint8_t address);
 
-void adxl_burst_data_read(uint16_t * adxl_x_data, uint16_t * adxl_y_data, uint16_t * adxl_z_data);
+void adxl_burst_data_read(int16_t * adxl_x_data, int16_t * adxl_y_data, int16_t * adxl_z_data);
 
 #endif
