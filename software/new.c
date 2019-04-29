@@ -93,7 +93,7 @@ int main(void) {
         if(g_data_ready_flag) // if the interrupt has triggered
         { 
             g_data_ready_flag = 0; //reset flag
-                    
+
             adxl_burst_data_read(&adxl_x_data, &adxl_y_data, &adxl_z_data); //burst read from all 6 data registers
             
             scaled_adxl_x_data = adxl_scale_value(adxl_x_data); //scale x, y & z value for display          
