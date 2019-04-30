@@ -31,7 +31,7 @@ module SPIMasterControl(
     
     reg ctrl_state_r;
     reg loading_r, shifting_r;
-    reg[3:0] bit_count_r;
+    reg[2:0] bit_count_r;
     reg[2:0] bytes_to_write_r, byte_index_r;
     reg[2:0] read_fill_level_bytes_r, read_fill_level_bytes_out_r;
     reg new_byte_r; 
@@ -83,24 +83,24 @@ module SPIMasterControl(
                 shift_reg_byte_o            <= write_data_i[8*(write_data_bytes_valid_i-3'd1) +: 8];
                 bytes_to_write_r            <= write_data_bytes_valid_i;
                 byte_index_r                <= (write_data_bytes_valid_i > 3'd1)? write_data_bytes_valid_i - 3'd2 : 3'd0;
-                bit_count_r                 <= 4'd7;
             end
         end
         
         SHIFTING : begin
+            // Only load a byte for one cycle
+            loading_r <= 1'b0;
             // Quit straight away if enable_i has gone low
             if(~enable_i) begin 
                 ctrl_state_r             <= IDLE;
-                bit_count_r              <= 4'd7;
+                bit_count_r              <= 3'd7;
                 bytes_to_write_r         <= 3'd0;
                 byte_index_r             <= 3'd0;
                 read_fill_level_bytes_r  <= 3'd0;
                 new_byte_r               <= 1'b0;
-                loading_r                <= 1'b0;
+                shift_reg_byte_o         <= 8'd0;
                 shifting_r               <= 1'b0;
             end
-            else begin            
-                loading_r   <= 1'b0;
+            else begin
                 shifting_r  <= 1'b1;
                 
                 if(bytes_to_write_r > 3'd0) begin
@@ -108,8 +108,8 @@ module SPIMasterControl(
                     shift_reg_bit_o <= write_data_r[8*(byte_index_r) + bit_count_r];                    
                     bit_count_r     <= bit_count_r - 4'd1;
                 
-                    if(bit_count_r == 4'd0) begin 
-                        bit_count_r             <= 4'd7;                
+                    if(bit_count_r == 3'd0) begin 
+                        bit_count_r             <= 3'd7;                
                         byte_index_r            <= (byte_index_r > 3'd0)? byte_index_r - 3'd1 : 3'd0;
                         bytes_to_write_r        <= bytes_to_write_r - 3'd1;
                         new_byte_r              <= 1'b1;                        
@@ -120,10 +120,10 @@ module SPIMasterControl(
                     // We have sent the desired number of bytes for this SPI transaction,
                     // so terminate
                     ctrl_state_r                <= IDLE;
-                    bit_count_r                 <= 4'd7;
+                    bit_count_r                 <= 3'd7; // Set up for next transaction
                     bytes_to_write_r            <= 3'd0;
                     byte_index_r                <= 3'd0;
-                    loading_r                   <= 1'b0;
+                    shift_reg_byte_o            <= 8'd0;
                     shifting_r                  <= 1'b0;
                 end     
             end
@@ -132,13 +132,14 @@ module SPIMasterControl(
             
         if(~rstn_i) begin
             ctrl_state_r                <= IDLE;            
-            bit_count_r                 <= 4'd7;
+            bit_count_r                 <= 3'd7;
             bytes_to_write_r            <= 3'd0;
             byte_index_r                <= 3'd0;
             read_fill_level_bytes_r     <= 3'd0;
             reset_fill_level_r          <= 1'b0;
             new_byte_r                  <= 1'b0;
             loading_r                   <= 1'b0;
+            shift_reg_byte_o            <= 8'd0;
             shifting_r                  <= 1'b0;
         end
     end

@@ -79,7 +79,8 @@ module AHBspi (
         (CONTROL_STATUS_ADDR):   read_data_r              <= ctrl_status_r;
         (SPI_SLAVE_SELECT_ADDR): read_data_r              <= spi_ss_r;
         (SPI_WDATA_ADDR):        read_data_r              <= write_only_r;
-        (SPI_RDATA_ADDR):        read_data_r              <= read_only_r;               
+        (SPI_RDATA_ADDR):        read_data_r              <= read_only_r;  
+         default:                read_data_r              <= 32'd0;
         endcase
     end
     
@@ -95,9 +96,10 @@ module AHBspi (
         end    
     end
     
+    // * denotes functionality not yet supported
     //                              CONTROL/STATUS
-    // | CPOL | CPHA | SPI_SS_ACTIVE_HIGH | NOT USED | WDATA_VALID_BYTES | WDATA_FINISHED | RDATA_BYTES_VALID_COUNT | RDATA_READY |
-    // |  15  |  14  |          13        |   12-8   |       7,6,5       |       4        |           3,2,1         |      0      |
+    // | CPOL* | CPHA* | SPI_SS_ACTIVE_HIGH | NOT USED | WDATA_VALID_BYTES | WDATA_FINISHED | RDATA_BYTES_VALID_COUNT | RDATA_READY |
+    // |  15   |  14   |          13        |   12-8   |       7,6,5       |       4        |           3,2,1         |      0      |
     
     always @(posedge HCLK) begin
         // Data phase   
@@ -117,12 +119,16 @@ module AHBspi (
     always @(posedge HCLK) begin
         reset_fill_level_r <= 1'b0;
         
+        /* This process handles the ctrl_status register, so account for the 
+         * condition where the AHB master wishes to write to it (only allow
+         * writing to R/W registers) */ 
         if(write_r & (HADDR_r[7:0] == CONTROL_STATUS_ADDR)) begin
             ctrl_status_r <= HWDATA & CONTROL_STATUS_REG_BITMASK;                                         
         end
         
         case (spi_state_r)
         IDLE : begin
+            // SPI transaction requested by AHB
             if(write_r & spi_ss_reduce_c & spi_data_byte_writes_required_r > 3'd0 & spi_ready_x) begin
                 spi_state_r                            <= TRANSACT;
                 spi_enable_r                           <= 1'b1; 
@@ -130,36 +136,37 @@ module AHBspi (
             end
         end        
         TRANSACT : begin
-            // Logic for WDATA_FINISHED flag
-            // Ensures SPI transaction has started
+            // Flag that indicates SPI transaction has started
             if(spi_read_data_bytes_valid_x > 3'd0) begin
                 spi_transact_underway_r <= 1'b1;
             end 
 
+            // Terminate when the desired number of bytes have been written down
             if(spi_read_data_bytes_valid_x == spi_data_byte_writes_required_r) begin
                 spi_enable_r <= 1'b0;
             end    
             
-            // Know SPI is ready for another transaction here
+            // Know SPI is ready for another transaction here, indicate that
+            // there is new data in the read_data register
             if(spi_transact_underway_r & spi_ready_x) begin
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b1; // Have written down the number of bytes requested to be written
                 ctrl_status_r[CS_RDATA_READY_INDEX]    <= 1'b1; // Have written down the number of bytes requested to be written
-                //spi_enable_r                           <= 1'b0; 
                 spi_transact_underway_r                <= 1'b0;
             end
             
             // User doesn't care about the data received from SPI
-            // and wants to perform another write
+            // and wants to perform another write, so do that
             if(write_r & spi_ready_x & ctrl_status_r[CS_RDATA_READY_INDEX]) begin
                 spi_enable_r                           <= 1'b1; 
                 ctrl_status_r[CS_WDATA_FINISHED_INDEX] <= 1'b0; // Read has occurred, so reset the data_written flag
                 ctrl_status_r[CS_RDATA_READY_INDEX]    <= 1'd0;
             end
             
+            // Copy read data from output port of SPIMaster
             read_only_r                                <= spi_read_data_x;
             
             // If slave has been disabled, or the SPI read data has been read,
-            // we can idle
+            // can transition to IDLE
             if(~spi_ss_reduce_c | spi_data_byte_writes_required_r == 3'd0) begin
                 spi_state_r                            <= IDLE;
                 spi_enable_r                           <= 1'b0;                
@@ -185,7 +192,7 @@ module AHBspi (
         .rstn_i(HRESETn),
         .enable_i(spi_enable_r),
         .spi_write_data_i(write_only_r),
-        .spi_write_data_bytes_valid_i(spi_data_byte_writes_required_r), // How many bytes did he want to write down?
+        .spi_write_data_bytes_valid_i(spi_data_byte_writes_required_r), 
         .reset_fill_level_i(reset_fill_level_r),
         .spi_miso_i(SPI_MISO_i),
         .spi_mosi_o(SPI_MOSI_o),

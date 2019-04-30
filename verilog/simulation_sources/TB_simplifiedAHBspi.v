@@ -84,12 +84,11 @@ module TB_simplifiedAHBspi ();
         
         // Set number of valid bytes in WDATA to 2, set slave select active high one-hot
         AHBwrite(WORD, 32'h52_00_00_00, 32'h00_00_20_40);
-        AHBidle;
+        //AHBidle;
         
         // Set SPI slave select all disabled except last (one-hot on write)
         // to select the display
         AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
-        AHBidle;        
         
         // Write two bytes to the display
         AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_13_08);
