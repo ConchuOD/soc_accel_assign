@@ -38,9 +38,9 @@ module TB_displayInterface;
 			#900
 			value = 32'h00000005;
 			#800
-			value = 132'h00000056;
+			value = 32'h00000056;
 			#1500
-			value = 132'h000000aa;
+			value = 32'h000000aa;
 			#6050
 			$stop;
 		end

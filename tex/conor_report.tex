@@ -5,7 +5,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[latin9]{inputenc}
 \usepackage[a4paper]{geometry}
-\geometry{verbose,tmargin=2.9cm,bmargin=2.9cm,lmargin=3.5cm,rmargin=2.3cm}
+\geometry{verbose,tmargin=2.9cm,bmargin=2.9cm,lmargin=2.3cm,rmargin=2.3cm}
 %\usepackage{fancyhdr}
 %\pagestyle{fancy}
 \setcounter{secnumdepth}{3}
@@ -74,7 +74,7 @@
 	basicstyle=\footnotesize\selectfont\ttfamily,
 	keywordstyle=\color{blue}\ttfamily,
 	stringstyle=\color{red}\ttfamily,
-	commentstyle=\color{green}\ttfamily,
+	commentstyle=\color{vgreen}\ttfamily,
 	morecomment=[l][\color{magenta}]{\#},
 	morekeywords={uint8\_t, uint16\_t, uint32\_t, interrupt, int16\_t, UL, SPI\_t},
 	moreattributes={DISPLAY\_CLIPPING\_THRESH, ADXL\_WRITE\_COMMAND,ADXL\_SS\_POS,SPI\_DATA\_READY,ADXL\_SS\_POS,SPI\_WRITE\_COMPLETE,VALUE\_1\_OFFSET,VALUE\_2\_OFFSET,NVIC\_ADXL\_BIT\_POS,ADXL\_DATA\_START,DISPLAY\_DIGITS\_PER\_VAR,DISPLAY\_MINUS,DISPLAY\_BLANK}, % etc...
@@ -142,11 +142,13 @@ typedef struct
 
 #define SPI_DATA_READY_BIT        0
 #define SPI_TRANSMIT_COMPLETE_BIT 4
+
+#define pt2SPI  ((SPI_t  *)0x52000000)
 \end{lstlisting}
 
-Two flag bits exist, one demarking the end of a transmission (when data can be written again to the write register) and the other signalling that data is available in the read register of the SPI master. The control register allows the polarity of the slave select signals and the number of byte to write in each transfer to be set by the programmer. In this case the control register has \texttt{0x00002040} written to it at startup, configuring the SPI master peripheral for $16$ bit transfer mode and active low slave select signals. The number of bits per transaction can be altered at runtime using the function \lstinline[style={c-style}]|spi_change_valid_write_bytes(uint8_t num_valid_bytes)| to 1, 2, 3 or 4 bytes.
+Two flag bits exist, one demarking the end of a transmission (when data can be written again to the write register) and the other signalling that data is available in the read register of the SPI master. The control register allows the polarity of the slave select signals and the number of bytes to write in each transfer to be set by the programmer. In this case the control register has \texttt{0x00002040} written to it at startup, configuring the SPI master peripheral for $16$ bit transfer mode and active low slave select signals. The number of bits per transaction can be set at runtime using the function \lstinline[style={c-style}]|spi_change_valid_write_bytes(uint8_t num_valid_bytes)| to 1, 2, 3 or 4 bytes.
 
-The remaining functions relating directly to the SPI interface are all single line functions that mask the implementation of the interface, reducing the number of changes required if, after the intial design, the SPI peripheral's behaviour was altered. Due to the simplicity of these functions, the time spent branching and returning from the function calls would be larger than the execution time of the function itself. To counteract this, the single line functions, such as \lstinline[style={c-style}]|uint32_t spi_read_word(void)|, are all declared with the attribute \texttt{always\_inline}, which forces the complier to replace the function call with the body of the function at each call.
+The remaining functions relating directly to the SPI interface are all single line functions that mask the implementation of the interface, reducing the number of changes required if, after the intial design, the SPI peripheral's behaviour was altered. Due to the simplicity of these functions, the time spent branching and returning from the function calls would be larger than the execution time of the function itself. To counteract this, the single line functions, such as \lstinline[style={c-style}]|uint32_t spi_read_word(void)|, are all declared with the attribute \texttt{always\_inline}, which forces the complier to replace the function call with the body of the function at each call. This attribute requires that the code be compiled in C99 mode, with the flag. %TODO
 \begin{lstlisting}[style={c-style}]
 //single line function should be inlined to avoid un-needed function call overhead
 __attribute__((always_inline)) uint32_t spi_read_word(void)
@@ -185,7 +187,7 @@ void adxl_init(void)
 \end{lstlisting}
 
 \subsection*{Writing to the ADXL}
-In the previous section, the function \lstinline[style={c-style}]|adxl_send_write_command(uint8_t address_to_write, uint8_t data_to_send)| was used to write to the ADXL362's registers. This function takes two parameters, the address of the register and the value to write to it, as would be expected. A write command requires that, in addition to the data, two bytes be sent. The first of these bytes contains the command, in this case the write command of \texttt{0x0A} and the address are prepended. The resulting 24 bit message can be send efficiently by converting the SPI peripheral to 24 bit transmit mode, thus requiring just a single write to complete the transfer. The function is blocking, and waits until the SPI master reports that the write has completed, so that it can clear the slave select and reset the message size to default.
+In the previous section, the function \lstinline[style={c-style}]|adxl_send_write_command(uint8_t address_to_write, uint8_t data_to_send)| was used to write to the ADXL362's registers. This function takes two parameters, the address of the register and the value to write to it, as would be expected. A write command requires that, in addition to the data, two bytes be sent. The first of these bytes contains the command, in this case the write command of \texttt{0x0A} and the address are prepended. The resulting 24 bit message can be sent efficiently by converting the SPI peripheral to 24 bit transmit mode, thus requiring just a single write to complete the transfer. The function is blocking, and waits until the SPI master reports that the write has completed, so that it can clear the slave select and reset the message size to default.
 \begin{lstlisting}[style={c-style}]
 void adxl_send_write_command(uint8_t address_to_write, uint8_t data_to_send)
 {
@@ -210,7 +212,7 @@ void adxl_send_write_command(uint8_t address_to_write, uint8_t data_to_send)
 \subsection*{Reading from the ADXL}
 To complement the write capabilities, a read function exists also. This function requires just a single argument, the address to be read from. After setting the appropriate slave select, the read command is sent to the ADXL362. This is done using another function, \lstinline[style={c-style}]|adxl_send_read_command(uint8_t address_to_read)|, which prepends the read command, \texttt{0x0B}, and uses \lstinline[style={c-style}]|spi_send_half_word(uint16_t half_word_to_send)| to send this command to the ADXL.
 
-The function then waits until this write has been completed, before then sending a junk byte so that the clock pulses on the SPI SCLK line will allow the SPI master to read in the value in the register. The junk byte is \texttt{0xFF}, as logic 1 is the idle value of the SPI data lines. As this is a single byte write, it first requires the SPI master to be converted to single byte mode. Once this byte has been sent, the function waits until the data is ready, at which point it is read out and the slave select released. The SPI's read register starts filling from the top, so a right shift of 24 is performed before the result is assigned to a  \lstinline[style={c-style}]|uint8_t|.
+The function then waits until this write has been completed, before then sending a junk byte so that the clock pulses on the SPI SCLK line will allow the SPI master to read in the value in the register. The junk byte is \texttt{0xFF}, as logic 1 is the idle value of the SPI data lines. As this is a single byte write, it first requires the SPI master to be converted to single byte mode. Once this byte has been sent, the function waits until the data is ready, at which point it is read out and the slave select released. The SPI's read register starts filling from the top, so a right shift of 24 is performed before the result is assigned to a \lstinline[style={c-style}]|uint8_t|.
 \begin{lstlisting}[style={c-style}]
 uint8_t adxl_read_register(uint8_t address)
 {
@@ -237,10 +239,10 @@ uint8_t adxl_read_register(uint8_t address)
 
 \subsection*{Data Acquisition}
 The ADXL362's data ready interrupt will trigger 12.5 times per second, and each time will cause the program to pause execution and branch to the interrupt service routine.
-The ISR itself is simple, and sets a flag in a global variable signalling to the program that data is ready to be serviced. As $12.5~\si{\hertz}$ is fairly slow in comparison to the $50~\si{\mega\hertz}$ clock frequency of the MCU, the data collection is not time critical, and as such is not performed in the ISR. Secondly, as the SPI clock is a small fraction of the MCU clock, the ISR would take rather long time to execute which is not desirable. This additionally has the advantage of keeping the number of global variables to the absolute minimum.
+The ISR itself is simple, and sets a flag in a global variable signalling to the program that data is ready to be serviced. As new data only appears at a rate of $12.5~\si{\hertz}$ which is fairly slow in comparison to the $50~\si{\mega\hertz}$ clock frequency of the MCU, the data collection is not time critical, and as such is not performed in the ISR. Secondly, as the SPI clock is a small fraction of the MCU clock, the ISR would take rather long time to execute which is not desirable. This additionally has the advantage of keeping the number of global variables to the absolute minimum.
 
 The ISR must also disable the interrupt that caused it, as the signal generating the interrupt on the ADXL will only be cleared once the data registers have been read. If this is not done, the ISR will immediately call again once the function has returned.
-\lstinline[style={c-style}]|uint8_t|.
+
 \begin{lstlisting}[style={c-style}]
 void ADXL_ISR(void)
 {
@@ -474,14 +476,86 @@ void display_send_led_value(int16_t value_to_display)
 A division is then carried out, which performs the binning process. Integer division will result in truncation, thus assigning the acceleration value to one of the available LED positions.
 The result is an integer in the range of $0\rightarrow 15$, as the reduced range of the positive side prevents assignment to a non existent LED at index $16$. The LED itself is set by writing a $1$, shifted to the correct location, to the LED register in the GPIO block provided. This function is declared in \textsc{display.h}.
 
-
-
 \section*{Testing}
+While testing of Andrew's section of the project was almost entirely based on Verilog test benches in Vivado, this was only possible for the \texttt{Nexys4Display} module. The test bench was written prior to the majority of the module itself, as the hardware was designed starting from the inputs, which meant that the testbench would not change during the process. For the code section of my work, testing was performed by incrementally increasing the complexity of the program, as a test bench is not possible.
 
-\section*{Measurements}
+\subsection*{Hardware Testing}
+The testbench for the display hardware solely tested the SPI hardware, as the \texttt{DisplayInterface} module had previously been tested and confirmed to work at the time of its previous use. Secondly, the \texttt{digit} \& \texttt{segment} outputs of the display hardware are not easily human readable, requiring a complex test bench using \texttt{assert} statements. However, once the SPI hardware had been confirmed to function, a bitstream was generated in which the display registers were initialised to set values to ensure the \texttt{digit} \& \texttt{segment} values still behaved as they had in the past.
+
+As the process of sending data over SPI is a very repetitive process, the test bench exploits Verilog ``tasks'' to simplify the testing process. This task, shown below, takes as input the message to send to the display. The simulated sending of the bits can be done in a loop, which minimises errors due to copy pasting and makes it trivial to send multiple messages.
+\begin{lstlisting}[style={verilog-style}]
+task send_spi_message;
+input [0:15] val_to_send; //indexed in reverse
+begin
+    clk_spi_x    = 1'b1;
+    bits_to_send = 16;
+    spi_ss       = 1'b0;
+    
+    clk_spi_x = #200 1'b0;
+    
+    for(clock_inc=0;clock_inc<bits_to_send;clock_inc=clock_inc+1)
+    begin
+        #50  spi_data  = val_to_send[clock_inc];
+        #150 clk_spi_x = 1'b1; //send clock high
+        if(clock_inc<bits_to_send-1) #200 clk_spi_x = 1'b0; //send clock low
+    end
+    #10;
+    spi_ss = 1'b1;        
+end
+endtask
+\end{lstlisting}
+The test bench sends a number of messages, both valid and invalid, to ensure that the correct messages, and only the correct messages, have their payload written into the display registers. Figure \ref{fig:TB} demonstrates the sending of a number of messages, with those containing invalid register addresses or lacking the write command having their value ignored. A failed transaction was also simulated, in which transmission ceased prior its completion. If not correctly designed, subsequent transmissions could appear misaligned, thus having their value ignored unless a hardware reset is performed. This is circumvented in this receiver by clearing the count of bits received once the module slave select returns to the idle position. 
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=\textwidth]{tb}
+	\caption{Message Transmission Verilog/Vivado Test Bench.}
+	\label{fig:TB}
+\end{figure}
+
+\subsection*{Software Testing}
+The software was tested in an incremental manner, first decoupling the data collection and display portions of the code to confirm each worked on its own before merging the two sections. As our design featured custom hardware, the tools bundled as part of Keil are unable to simulate the system and tests must be performed using the Nexys 4 board itself.
+
+To test the SPI wrapper for display and the surrounding code, numbers to display were hard coded into the program, to ensure they would appear on the display correctly. This served as test of the display/SPI code, but also of the respective pieces of hardware. Initially this failed to correctly display after the first digit, meaning the count of bits received by the display was likely behaving incorrectly. Examining the signals, and comparing to the combined SPI/Display test bench written by Andrew, it was discovered that the inter-message timing in the test bench had masked a design flaw in the display's receiver. This meant that the bit count came out of reset prematurely, initiating the count and therefore causing byte misalignment.
+
+The benefit of having a second, but simpler, SPI device in the system made the debugging of the code and hardware relating to SPI significantly easier. It was particularly useful that, in contrast to the ADXL, the 7-segment displays served as visual feedback.
+
+With the SPI transmission process complete, the constant value of the first register in the ADXL was used to confirm readback was functioning correctly, printed to the console using the debug channel provided by the serial connection to HyperTerm.
+
+With both portions of the code behaving as expected, they were merged into a single program and tests carried out. From the inspection of the output, it appeared to us that everything was working as intended, however on occasion, writes to the data registers would instead be delivered to the enable register causing the digits to turn off. Examining the SPI lines during transactions on a digital oscilloscope, we discovered that, as our implementation of the SPI master would generate the SPI clock signal as long as the slave select was enabled, a race was created where if the software could not clear slave select quickly enough an extra clock pulse was generated.
+
+After it was pointed out that the system had been over complicated, thus causing this problem, we changed the SPI hardware such that clock pulses would only be generated during the write process, and the ``extra'' pulses required for the readback process generated by sending ``junk'' data bits instead. This removes the potential race condition, and the error causing the display to deactivate itself.
+
+\subsection*{Oscilloscope SPI Screenshots}
+Figure \ref{fig:SPI} contains a capture of a write transaction from the process to the display. The message in this case is a write command, address and payload all of 1, and would thus instruct the hardware to draw a 1 on the rightmost digit.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=\textwidth]{LAB-03}
+	\caption{SPI Write Transaction Between Software and Display Hardware.}
+	\label{fig:SPI}
+\end{figure}
+
+Figure \ref{fig:SPI_2} contains a capture of the burst read back. This begins with writes of \texttt{0x0B} and \texttt{0x0E} to signal this is a read command beginning at the address of the first register containing the 12 bit data. 6 bytes of \texttt{0xFF} are then transmitted, which the ADXL362 uses to clock out the response onto MISO.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=\textwidth]{LAB-02}
+	\caption{SPI Burst Read from ADXL362.}
+	\label{fig:SPI_2}
+\end{figure}
+Examining the response bytes, they contain the values $12$, $7$ and $-1012$ for $x$, $y$ and $z$ respectively. This is the expected conditions for the board sitting face up on the bench, as the z-axis runs perpendicular to the plane of the board. $-1024$ would be exactly $1~\si{\gravity}$, so $-1012$ is well within the expected value for this measurement allowing for some measurement inaccuracy.
+
+\section*{System Level Verification}
+The correctness of the overall system was checked by angling the board such that the earth's gravitation force was aligned with the measurement direction, and then rotated through $180~\si{\degree}$. The x- and z-axes values were then checked to ensure they lay within the a small margin of $1.00$ and $-1.00$ respectively. Similarly the behaviour of the LEDs corresponding to the y-axes acceleration value was also checked.
 
 \section*{Flaws}
+The main flaw with our design was the over-complication of the SPI hardware, although written by Andrew, the behaviour of which was decided between the two of us. I had incorrectly assumed the code would execute quickly enough that the slave select would be cleared before extra pulses would be generated. This was rectified before submission, and converted to the system described above. However, the adjustable size of the transactions remains, which may also represent an over complication of the design.
 
 \section*{Board Configuration}
+Figure \ref{fig:brd_cfg} contains an annotated image of the board during operation, as unfortunately a video cannot be embedded into a printable PDF.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=\textwidth]{LAB-02}
+	\caption{Nexys 4 Board Configuration.}
+	\label{fig:brd_cfg}
+\end{figure}
 
 \end{document}
