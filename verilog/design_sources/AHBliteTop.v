@@ -21,18 +21,18 @@ module AHBliteTop (
         input         btnL,        // left button
         input         btnC,        // centre button
         input         btnR,        // right button
-        input         aclMISO,     //
-        output        aclSCK,      //
-        output        aclSS,       //
-        input         aclInt1,     //
-        input         aclInt2,     //
+        input         aclMISO,     // ADXL362 SPI MISO
+        output        aclSCK,      // ADXL362 SPI clock
+        output        aclSS,       // ADXL362 SPI slave select
+        input         aclInt1,     // ADXL362 interrupt 1
+        input         aclInt2,     // ADXL362 interrupt 2
         input         RsRx,        // serial port receive line
         input  [15:0] sw,          // 16 slide switches on Nexys 4 board
         output [15:0] led,         // 16 individual LEDs above slide switches   
         output [5:0]  rgbLED,      // multi-colour LEDs - {blu2, grn2, red2, blu1, grn1, red1} 
         output [7:0]  JA,          // monitoring connector on FPGA board - use with oscilloscope
-        output        RsTx,         // serial port transmit line
-        output        aclMOSI,     //
+        output        RsTx,        // serial port transmit line
+        output        aclMOSI,     // ADXL362 SPI MOSI
         output [7:0]  segment_o,
         output [7:0]  digit_o
     );
@@ -80,7 +80,11 @@ module AHBliteTop (
     assign      aclSS   = spi_ss_x[SPI_SS_ACCEL_INDEX];
     assign      aclMOSI = spi_mosi_x;
     
-    always @(*) begin        
+    // spi_miso must be multiplexed based on which SPI slave 
+    // is currently selected
+    always @(*) begin  
+        // Internal slave select implementation is always active low, 
+        // so the wires must be inverted
         if(~spi_ss_display_x) begin
             spi_miso_r = spi_miso_display_x;
         end
