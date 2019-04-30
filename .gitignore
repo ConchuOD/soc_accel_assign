@@ -1,3 +1,4 @@
+tex/build/
 tex/*.aux
 tex/*.log
 tex/*.synctex.gz
