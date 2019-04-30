@@ -19,18 +19,15 @@ module Nexys4DisplayTestBench ();
     task send_spi_message;
     input [0:15] val_to_send; //indexed in reverse
     begin
-        clk_spi_x    = 1'b1;
         bits_to_send = 16;
         spi_ss       = 1'b0;
-        
-        clk_spi_x = #200 1'b0;
         
         for(clock_inc=0;clock_inc<bits_to_send;clock_inc=clock_inc+1)
         begin
             #50  spi_data  = val_to_send[clock_inc];
             #150 clk_spi_x = 1'b1; //send clock high
-            if(clock_inc<bits_to_send-1) #200 clk_spi_x = 1'b0; //send clock low
-        end
+            #200 clk_spi_x = 1'b0; //send clock low
+        end        
         #10;
         spi_ss = 1'b1;        
     end
@@ -39,12 +36,9 @@ module Nexys4DisplayTestBench ();
     task send_spi_message_noss;
     input [0:15] val_to_send; //indexed in reverse
     begin
-        clk_spi_x    = 1'b1;
         bits_to_send = 16;
         //spi_ss       = 1'b0;
-        
-        #200 clk_spi_x = 1'b0;
-        
+                
         for(clock_inc=0;clock_inc<bits_to_send;clock_inc=clock_inc+1)
         begin
             #50  spi_data  = val_to_send[clock_inc];
@@ -55,7 +49,24 @@ module Nexys4DisplayTestBench ();
     end
     endtask
     
-    Nexys4DisplayTestTest dut (
+    task send_spi_message_fail;
+    input [0:15] val_to_send; //indexed in reverse
+    begin
+        bits_to_send = 16;
+        spi_ss       = 1'b0;
+             
+        for(clock_inc=0;clock_inc<bits_to_send/2;clock_inc=clock_inc+1)
+        begin
+            #50  spi_data  = val_to_send[clock_inc];
+            #150 clk_spi_x = 1'b1; //send clock high
+            #200 clk_spi_x = 1'b0; //send clock low
+        end
+        #10;
+        spi_ss = 1'b1;        
+    end
+    endtask
+    
+    Nexys4Display dut (
         .rst_low_i(rst_pbn),
         .block_clk_i(clk6m25_x),
         .spi_sclk_i(clk_spi_x),   //idle high, posedge active, < clock_5meg_i
@@ -71,13 +82,15 @@ module Nexys4DisplayTestBench ();
         rst_pbn = 1'b1;
         spi_ss = 1'b1;
         spi_data = 1'b1;
-        clk_spi_x  = 1'b1;
+        clk_spi_x  = 1'b0;
         #10
         rst_pbn = 1'b0;
         #100 
         rst_pbn = 1'b1;
         #100
         send_spi_message(16'b0001_0000_0000_1100);
+        #1000
+        send_spi_message_fail(16'h1_6_ee);
         #1000
         send_spi_message(16'h1_1_aa);
         #1000

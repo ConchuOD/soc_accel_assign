@@ -114,6 +114,14 @@
 \DeclareSIUnit{\bitsi}{b}
 
 \begin{document}
+\begin{center}		
+	\begin{figure}[!t]
+		\centering
+		\includegraphics[width=\textwidth]{asigned}
+	\end{figure}
+\end{center}
+\clearpage	
+	
 \section*{Introduction}
 In this assignment, the objective was to design peripheral devices and implement code that would display the acceleration information from a 3-axis accelerometer in some manner. The platform on which this assignment was to be completed was a Nexys4 Development board, featuring a Xilinx Artix-7 FPGA and an Analog Devices ADXL362 accelerometer among other components. Also provided were a ``soft'' ARM Cortex M0 microcontroller core alongside UART, RAM, ROM and GPIO peripherals (implemented in Verilog), each using the AHB Lite bus. The minimum assignment requirements mandated the display of a single axis on the LEDs. In our case we chose to read back information from all three axes, of which the x- \& z-axis information would be shown on the 7-segment display and, as it lay in the same plane, the y-axis information would be represented by the LEDs. 
 
@@ -148,7 +156,7 @@ typedef struct
 
 Two flag bits exist, one demarking the end of a transmission (when data can be written again to the write register) and the other signalling that data is available in the read register of the SPI master. The control register allows the polarity of the slave select signals and the number of bytes to write in each transfer to be set by the programmer. In this case the control register has \texttt{0x00002040} written to it at startup, configuring the SPI master peripheral for $16$ bit transfer mode and active low slave select signals. The number of bits per transaction can be set at runtime using the function \lstinline[style={c-style}]|spi_change_valid_write_bytes(uint8_t num_valid_bytes)| to 1, 2, 3 or 4 bytes.
 
-The remaining functions relating directly to the SPI interface are all single line functions that mask the implementation of the interface, reducing the number of changes required if, after the intial design, the SPI peripheral's behaviour was altered. Due to the simplicity of these functions, the time spent branching and returning from the function calls would be larger than the execution time of the function itself. To counteract this, the single line functions, such as \lstinline[style={c-style}]|uint32_t spi_read_word(void)|, are all declared with the attribute \texttt{always\_inline}, which forces the complier to replace the function call with the body of the function at each call. This attribute requires that the code be compiled in C99 mode, with the flag. %TODO
+The remaining functions relating directly to the SPI interface are all single line functions that mask the implementation of the interface, reducing the number of changes required if, after the intial design, the SPI peripheral's behaviour was altered. Due to the simplicity of these functions, the time spent branching and returning from the function calls would be larger than the execution time of the function itself. To counteract this, the single line functions, such as \lstinline[style={c-style}]|uint32_t spi_read_word(void)|, are all declared with the attribute \texttt{always\_inline}, which forces the complier to replace the function call with the body of the function at each call. This attribute requires that the code be compiled in C99 mode, with the flag \texttt{--c99}.
 \begin{lstlisting}[style={c-style}]
 //single line function should be inlined to avoid un-needed function call overhead
 __attribute__((always_inline)) uint32_t spi_read_word(void)
@@ -507,7 +515,7 @@ endtask
 The test bench sends a number of messages, both valid and invalid, to ensure that the correct messages, and only the correct messages, have their payload written into the display registers. Figure \ref{fig:TB} demonstrates the sending of a number of messages, with those containing invalid register addresses or lacking the write command having their value ignored. A failed transaction was also simulated, in which transmission ceased prior its completion. If not correctly designed, subsequent transmissions could appear misaligned, thus having their value ignored unless a hardware reset is performed. This is circumvented in this receiver by clearing the count of bits received once the module slave select returns to the idle position. 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=\textwidth]{tb}
+	\includegraphics[width=0.8\textwidth]{capture}
 	\caption{Message Transmission Verilog/Vivado Test Bench.}
 	\label{fig:TB}
 \end{figure}
@@ -529,7 +537,7 @@ After it was pointed out that the system had been over complicated, thus causing
 Figure \ref{fig:SPI} contains a capture of a write transaction from the process to the display. The message in this case is a write command, address and payload all of 1, and would thus instruct the hardware to draw a 1 on the rightmost digit.
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=\textwidth]{LAB-03}
+	\includegraphics[width=0.8\textwidth]{LAB-03}
 	\caption{SPI Write Transaction Between Software and Display Hardware.}
 	\label{fig:SPI}
 \end{figure}
@@ -537,7 +545,7 @@ Figure \ref{fig:SPI} contains a capture of a write transaction from the process 
 Figure \ref{fig:SPI_2} contains a capture of the burst read back. This begins with writes of \texttt{0x0B} and \texttt{0x0E} to signal this is a read command beginning at the address of the first register containing the 12 bit data. 6 bytes of \texttt{0xFF} are then transmitted, which the ADXL362 uses to clock out the response onto MISO.
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=\textwidth]{LAB-02}
+	\includegraphics[width=0.8\textwidth]{LAB-02}
 	\caption{SPI Burst Read from ADXL362.}
 	\label{fig:SPI_2}
 \end{figure}
@@ -550,10 +558,10 @@ The correctness of the overall system was checked by angling the board such that
 The main flaw with our design was the over-complication of the SPI hardware, although written by Andrew, the behaviour of which was decided between the two of us. I had incorrectly assumed the code would execute quickly enough that the slave select would be cleared before extra pulses would be generated. This was rectified before submission, and converted to the system described above. However, the adjustable size of the transactions remains, which may also represent an over complication of the design.
 
 \section*{Board Configuration}
-Figure \ref{fig:brd_cfg} contains an annotated image of the board during operation, as unfortunately a video cannot be embedded into a printable PDF.
+Figure \ref{fig:brd_cfg} contains an annotated image of the board during operation, with only the force of gravity applied in the negative $z$ direction, as unfortunately a video cannot be embedded into a printable PDF.
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=\textwidth]{LAB-02}
+	\includegraphics[width=0.8\textwidth]{annotated}
 	\caption{Nexys 4 Board Configuration.}
 	\label{fig:brd_cfg}
 \end{figure}
