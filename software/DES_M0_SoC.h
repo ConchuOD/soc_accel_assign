@@ -92,6 +92,7 @@ typedef struct
     volatile uint32_t      slave_select;
     union
     {
+        volatile uint8_t   write_byte;
         volatile uint16_t  write_half_word;
         volatile uint32_t  write_word;
     };

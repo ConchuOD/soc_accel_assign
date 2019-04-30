@@ -62,7 +62,7 @@ module Nexys4Display (
         else            spi_rx_shiftreg_r <= spi_rx_shiftreg_next_c;
     end
 
-    assign spi_rx_shiftreg_next_c = {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i}; //assign spi_rx_shiftreg_next_c = ({(BYTE_WIDTH){ (~spi_ss_i) }}) & {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i};
+    assign spi_rx_shiftreg_next_c = {spi_rx_shiftreg_r[BYTE_WIDTH-1-1:0] , spi_mosi_i};
 
     //count the number of bits received
     always @ (posedge spi_sclk_i or negedge rst_low_i or posedge spi_rx_transfer_complete_r)
