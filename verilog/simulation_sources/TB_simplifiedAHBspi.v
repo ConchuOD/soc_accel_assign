@@ -100,96 +100,21 @@ module TB_simplifiedAHBspi ();
             AHBread(WORD, 32'h0, 32'h0);
         end
        
-        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
-        
-        // Write two bytes to the display "straight away"
-        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_02);
         AHBidle;
-        
-        
-        
-        
-        //AHBread(WORD, 32'h00_00_00_0C, 32'h0);
-        //AHBidle;
-        // Set SPI slave select all disabled 
-        //AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_00);
-        
-        // Wait some time between writes        
         #10000;
         
-        // Set SPI slave select all disabled except last (one-hot on write)
-        // to select the display
-        //AHBwrite(WORD, 32'h52_00_00_04, 32'h00_00_00_01);
-        //AHBidle;
-        
-        
-        // Write two bytes to the display
-        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_11_02);
+        // Want to write, and try to initiate another write while the previous
+        // one is still completing
+        // Write two bytes to the display, 0x05 this time in the same register
+        AHBwrite(HALF, 32'h52_00_00_08, 32'h00_00_13_05);
         AHBidle;
         
-        while(~HRDATA[4]) begin             
-            AHBread(WORD, 32'h0, 32'h0);
-        end
         
-        // 2 bytes have been written down, wait a small amount of time to simulate the software delay 
-        AHBidle;
-        #200
-        
-        AHBread(WORD, 32'h00_00_00_0C, 32'h0);
-        AHBidle;
-        
-        #10000
-        
-        // Do something here...
-        $stop;
-        
-        /*
         // Read the control/status register until we have written
         // down the two bytes
         while(~HRDATA[4]) begin             
             AHBread(WORD, 32'h0, 32'h0);
-            //AHBidle;
-            //#100;
         end
-        
-        // Two bytes have been written, read the read_data to 
-        // reset the write flag and read flag
-        AHBread(WORD, 32'h00_00_00_0C, 32'h0); // Reset read flag
-        //AHBidle;
-        //#50
-        
-        // Read
-        AHBread(WORD, 32'h0, 32'h0);
-        //AHBidle;
-        //#100;
-        
-        // Read until buffer fills up with 4 bytes
-        while(~HRDATA[0]) begin             
-            AHBread(WORD, 32'h0, 32'h0);
-        end
-        
-        // Invalidate flag
-        AHBread(WORD, 32'h00_00_00_0C, 32'h0); // Reset read flag
-        //AHBidle;
-        //#50
-        // Read
-        AHBread(WORD, 32'h0, 32'h0);
-        
-        // Read until buffer fills up with 4 bytes again
-        while(~HRDATA[0]) begin             
-            AHBread(WORD, 32'h0, 32'h0);
-        end
-        
-        // Once the two bytes have been written, disable
-        // the display slave select
-        //AHBwrite(WORD, 32'h4, 32'hFF_FF_FF_FF);
-        //AHBidle;
-        */
-        
-        #9000;
-        
-        
-        HSELx = 1'b0;
         
         $stop;
     end
@@ -201,7 +126,7 @@ module TB_simplifiedAHBspi ();
     assign SPI_miso_x = data_test[count_r];
     //end
     
-    always @(posedge SPI_clk_x) begin    
+    always @(posedge SPI_clk_x, negedge HRESETn) begin    
         if(~SPI_ss_x[0]) begin
             count_r <= count_r - 6'd1;
         end
